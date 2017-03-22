@@ -257,17 +257,17 @@ void TiogaSTKIface::update_fringe_info()
     fout << std::endl;
     if (std::fabs(error) > maxError) maxError = error;
 
-    // if (nodeID == 2241 || nodeID == 4332  ) {
-    //   std::cout << myRank << "\t" << nodeID << "\t" << donorID << "\t" << nid << "\t"
-    //             << mtag << "\t" << blocks_[mtag]->iblanks()[nid] << std::endl;
-    //   for (int i=0; i<3; i++) {
-    //     std::cout << "\t" << info->nodalCoords_[i];
-    //   }
-    //   std::cout << std::endl;
-    // }
+    if (nodeID == 2241 || nodeID == 4332  ) {
+      std::cout << iproc << "\t" << nodeID << "\t" << donorID << "\t" << nid << "\t"
+                << mtag << "\t" << blocks_[mtag]->iblanks()[nid] << std::endl;
+      for (int i=0; i<3; i++) {
+        std::cout << "\t" << info->nodalCoords_[i];
+      }
+      std::cout << std::endl;
+    }
   }
   std::cout << "\nNalu CVFEM interpolation results: " << std::endl;
-  std::cout << "Proc: " << bulk_.parallel_rank()
+  std::cout << "Proc: " << iproc
             << "; Max error = " << maxError << std::endl;
 }
 
