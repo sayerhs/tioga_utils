@@ -86,6 +86,10 @@ public:
    */
   void get_donor_info(tioga&, stk::mesh::EntityProcVec&);
 
+  void register_solution(tioga&);
+
+  double calculate_residuals(tioga&);
+
   // Accessors
 
   //! STK Global ID for all the nodes comprising this mesh block
@@ -99,6 +103,10 @@ public:
   //! IBLANK mask indicating whether the element is active or inactive
   inline const std::vector<int>& iblank_cell() const
   { return iblank_cell_; }
+
+  //! IBLANK mask indicating whether the element is active or inactive
+  inline const std::vector<int>& iblanks() const
+  { return iblank_; }
 
 private:
   TiogaBlock() = delete;
@@ -207,6 +215,8 @@ private:
 
   //! Receptor information for this mesh block
   std::vector<int> receptor_info_;
+
+  std::vector<double> qsol_;
 
   //! Dimensionality of the mesh
   int ndim_;

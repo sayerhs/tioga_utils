@@ -385,4 +385,36 @@ void TiogaBlock::register_block(tioga& tg)
   tg.set_cell_iblank(meshtag_, iblank_cell_.data());
 }
 
+void TiogaBlock::register_solution(tioga& tg)
+{
+  if (num_nodes_ < 1) return;
+
+  int nvar=1;
+  qsol_.resize(num_nodes_);
+
+  for (int i=0, ii=0; i<num_nodes_; i++, ii+=3) {
+    qsol_[i] = xyz_[ii] + xyz_[ii+1] + xyz_[ii+2];
+  }
+
+  tg.registerSolution(meshtag_, qsol_.data());
+}
+
+double TiogaBlock::calculate_residuals(tioga& tg)
+{
+  double rnorm = 0.0;
+
+  // Skip block if this is not shared by the proc
+  if (num_nodes_ < 1) return rnorm;
+
+  int nvar = 1;
+
+  for (int i=0, ii=0; i < num_nodes_; i++, ii+=3) {
+    double diff = qsol_[i] - (xyz_[ii] + xyz_[ii+1] + xyz_[ii+2]);
+    rnorm += diff * diff;
+  }
+
+  rnorm /= num_nodes_;
+  return rnorm;
+}
+
 } // namespace tioga

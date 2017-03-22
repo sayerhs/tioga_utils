@@ -161,7 +161,6 @@ void TiogaSTKIface::update_ghosting()
 
 void TiogaSTKIface::populate_inactive_part()
 {
-  size_t oldSize = holeElems_.size();
   stk::mesh::PartVector toParts;
   toParts.push_back(inactivePart_);
 
@@ -182,12 +181,13 @@ void TiogaSTKIface::populate_inactive_part()
     }
   }
   bulk_.modification_end();
-  std::cout << bulk_.parallel_rank() << "\t" << holeElems_.size() << "\t"
-            << oldSize << std::endl;
+  // std::cout << bulk_.parallel_rank() << "\t" << holeElems_.size() << "\t"
+  //           << oldSize << std::endl;
 }
 
 void TiogaSTKIface::update_fringe_info()
 {
+  int myRank = bulk_.parallel_rank();
   std::unique_ptr<sierra::nalu::MasterElement> meSCS(new sierra::nalu::HexSCS());
   std::vector<double> elemxyz(24);
   std::vector<int> receptors;
@@ -205,6 +205,12 @@ void TiogaSTKIface::update_fringe_info()
     int nodeID = blocks_[mtag]->node_id_map()[nid];  // STK Global ID of the fringe node
     stk::mesh::Entity node = bulk_.get_entity(stk::topology::NODE_RANK, nodeID);
     stk::mesh::Entity elem = bulk_.get_entity(stk::topology::ELEM_RANK, donorID);
+
+    // int nodeRank = bulk_.parallel_owner_rank(node);
+    // if (nodeRank != myRank) {
+    //   std::cout << myRank << "\t" << nodeID << "\t" << donorID << std::endl;
+    //   continue;
+    // }
 
 #ifndef NDEBUG
     if (!bulk_.is_valid(elem))
@@ -231,9 +237,46 @@ void TiogaSTKIface::update_fringe_info()
         elemxyz[offset] = exyz[j];
       }
     }
-    const double nearestDistance = meSCS->isInElement(
+    meSCS->isInElement(
       elemxyz.data(), info->nodalCoords_.data(), info->isoCoords_.data());
 
+    // if (myRank == 0) {
+    //   std::cout << nodeID << "\t" << donorID ;
+    //   for (int i=0; i<3; i++) {
+    //     std::cout << "\t" << info->isoCoords_[i];
+    //   }
+    //   std::cout << std::endl;
+    // }
+
+    if (nodeID == 2241 || nodeID == 4332  ) {
+      std::cout << myRank << "\t" << nodeID << "\t" << donorID << "\t" << nid << "\t"
+                << mtag << "\t" << blocks_[mtag]->iblanks()[nid] << std::endl;
+      for (int i=0; i<3; i++) {
+        std::cout << "\t" << info->nodalCoords_[i];
+      }
+      std::cout << std::endl;
+    }
+
+  }
+}
+
+void TiogaSTKIface::check_soln_norm()
+{
+  if (bulk_.parallel_rank() == 0) {
+    std::cout << "\n\n-- Interpolation error statistics --\n"
+              << "Proc ID.    BodyTag    Error" << std::endl;
+  }
+  for (auto& tb: blocks_) {
+    tb->register_solution(*tg_);
+  }
+
+  tg_->dataUpdate(1, 0);
+
+  int nblocks = blocks_.size();
+  for (int i=0; i<nblocks; i++) {
+    auto& tb = blocks_[i];
+    double rnorm = tb->calculate_residuals(*tg_);
+    std::cout << bulk_.parallel_rank() << "\t" << i << "\t" << rnorm << std::endl;
   }
 }
 

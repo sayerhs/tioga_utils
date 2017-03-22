@@ -68,6 +68,8 @@ public:
    */
   void execute();
 
+  void check_soln_norm();
+
 private:
   TiogaSTKIface() = delete;
   TiogaSTKIface(const TiogaSTKIface&) = delete;

@@ -61,6 +61,7 @@ int main(int argc, char** argv)
   tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info);
   tg.setup();
 
+  // Bouncing cylinder moving mesh test
   // VectorFieldType& displ = meta.declare_field<VectorFieldType>(
   //   stk::topology::NODE_RANK, "mesh_displacement");
 
@@ -70,6 +71,8 @@ int main(int argc, char** argv)
   tg.initialize();
 
   tg.execute();
+
+  tg.check_soln_norm();
 
   // ScalarFieldType* ibf = meta.get_field<ScalarFieldType>(
   //   stk::topology::NODE_RANK, "iblank");
