@@ -3,6 +3,7 @@
 
 #include <numeric>
 #include <iostream>
+#include <cmath>
 
 #include "tioga.h"
 
@@ -414,7 +415,7 @@ double TiogaBlock::calculate_residuals(tioga& tg)
   }
 
   rnorm /= num_nodes_;
-  return rnorm;
+  return std::sqrt(rnorm);
 }
 
 } // namespace tioga

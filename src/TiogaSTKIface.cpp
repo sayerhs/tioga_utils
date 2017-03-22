@@ -7,6 +7,8 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <fstream>
+#include <string>
 
 #include "tioga.h"
 
@@ -187,9 +189,14 @@ void TiogaSTKIface::populate_inactive_part()
 
 void TiogaSTKIface::update_fringe_info()
 {
-  int myRank = bulk_.parallel_rank();
+  double maxError = -1.0e16;
+  int iproc = bulk_.parallel_rank();
+  int nproc = bulk_.parallel_size();
+  std::string fname = "tioga_fringe." + std::to_string(nproc) + "." + std::to_string(iproc);
+  std::ofstream fout(fname, std::ios::out);
   std::unique_ptr<sierra::nalu::MasterElement> meSCS(new sierra::nalu::HexSCS());
   std::vector<double> elemxyz(24);
+  std::vector<double> intxyz(3);
   std::vector<int> receptors;
   tg_->getReceptorInfo(receptors);
   ovsetInfo_.resize(receptors.size()/3);
@@ -239,25 +246,29 @@ void TiogaSTKIface::update_fringe_info()
     }
     meSCS->isInElement(
       elemxyz.data(), info->nodalCoords_.data(), info->isoCoords_.data());
+    meSCS->interpolatePoint(3, info->isoCoords_.data(), elemxyz.data(), intxyz.data());
 
-    // if (myRank == 0) {
-    //   std::cout << nodeID << "\t" << donorID ;
+    double error = 0.0;
+    fout << nodeID << "\t" << donorID ;
+    for (int i=0; i<3; i++) {
+      fout << "\t" << info->isoCoords_[i];
+      error += info->nodalCoords_[i] - intxyz[i];
+    }
+    fout << std::endl;
+    if (std::fabs(error) > maxError) maxError = error;
+
+    // if (nodeID == 2241 || nodeID == 4332  ) {
+    //   std::cout << myRank << "\t" << nodeID << "\t" << donorID << "\t" << nid << "\t"
+    //             << mtag << "\t" << blocks_[mtag]->iblanks()[nid] << std::endl;
     //   for (int i=0; i<3; i++) {
-    //     std::cout << "\t" << info->isoCoords_[i];
+    //     std::cout << "\t" << info->nodalCoords_[i];
     //   }
     //   std::cout << std::endl;
     // }
-
-    if (nodeID == 2241 || nodeID == 4332  ) {
-      std::cout << myRank << "\t" << nodeID << "\t" << donorID << "\t" << nid << "\t"
-                << mtag << "\t" << blocks_[mtag]->iblanks()[nid] << std::endl;
-      for (int i=0; i<3; i++) {
-        std::cout << "\t" << info->nodalCoords_[i];
-      }
-      std::cout << std::endl;
-    }
-
   }
+  std::cout << "\nNalu CVFEM interpolation results: " << std::endl;
+  std::cout << "Proc: " << bulk_.parallel_rank()
+            << "; Max error = " << maxError << std::endl;
 }
 
 void TiogaSTKIface::check_soln_norm()
