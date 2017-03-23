@@ -61,12 +61,6 @@ int main(int argc, char** argv)
   tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info);
   tg.setup();
 
-  // Bouncing cylinder moving mesh test
-  // VectorFieldType& displ = meta.declare_field<VectorFieldType>(
-  //   stk::topology::NODE_RANK, "mesh_displacement");
-
-  // stk::mesh::Part* cyl_block = meta.get_part("cylinder");
-  // stk::mesh::put_field(displ, *cyl_block);
   stkio.populate_bulk_data();
   tg.initialize();
 
@@ -74,18 +68,46 @@ int main(int argc, char** argv)
 
   tg.check_soln_norm();
 
-  // ScalarFieldType* ibf = meta.get_field<ScalarFieldType>(
-  //   stk::topology::NODE_RANK, "iblank");
-  // ScalarFieldType* ibcell = meta.get_field<ScalarFieldType>(
-  //   stk::topology::ELEM_RANK, "iblank_cell");
+  bool do_write = true;
+  if (inpfile["write_outputs"])
+    do_write = inpfile["write_outputs"].as<bool>();
+
+  if (do_write) {
+    ScalarFieldType* ibf = meta.get_field<ScalarFieldType>(
+      stk::topology::NODE_RANK, "iblank");
+    ScalarFieldType* ibcell = meta.get_field<ScalarFieldType>(
+      stk::topology::ELEM_RANK, "iblank_cell");
+
+    std::string out_mesh = inpfile["output_mesh"].as<std::string>();
+    if (iproc == 0)
+      std::cout << "Writing output file: " << out_mesh << std::endl;
+    size_t fh = stkio.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
+    stkio.add_field(fh, *ibf);
+    stkio.add_field(fh, *ibcell);
+    //stkio.add_field(fh, displ);
+
+    stkio.begin_output_step(fh, 0.0);
+    stkio.write_defined_output_fields(fh);
+    stkio.end_output_step(fh);
+
+    stk::mesh::Entity node = bulk.get_entity(
+      stk::topology::NODE_RANK, 4332);
+    if (bulk.is_valid(node)) {
+      double* ibval = stk::mesh::field_data(*ibf, node);
+      std::cout << "IBLANK: " << iproc << "\t" << *ibval << "\t"
+                << bulk.bucket(node).owned() << std::endl;
+    } else {
+      std::cout << "IBLANK: " << iproc << "Doesnt exist" << std::endl;
+    }
+  }
+
+  // Bouncing cylinder moving mesh test
+  // VectorFieldType& displ = meta.declare_field<VectorFieldType>(
+  //   stk::topology::NODE_RANK, "mesh_displacement");
+  // stk::mesh::Part* cyl_block = meta.get_part("cylinder");
+  // stk::mesh::put_field(displ, *cyl_block);
   // VectorFieldType* coords = meta.get_field<VectorFieldType>(
   //   stk::topology::NODE_RANK, "coordinates");
-
-  // std::string out_mesh = inpfile["output_mesh"].as<std::string>();
-  // size_t fh = stkio.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
-  // stkio.add_field(fh, *ibf);
-  // stkio.add_field(fh, *ibcell);
-  // stkio.add_field(fh, displ);
 
   // for (int i=0; i<41; i++) {
   //   //std::cout << bulk.parallel_rank() << "\t" << i << std::endl;
@@ -108,10 +130,6 @@ int main(int argc, char** argv)
   //   stkio.write_defined_output_fields(fh);
   //   stkio.end_output_step(fh);
   // }
-
-  // stkio.begin_output_step(fh, 0.0);
-  // stkio.write_defined_output_fields(fh);
-  // stkio.end_output_step(fh);
 
   stk::parallel_machine_finalize();
   return 0;
