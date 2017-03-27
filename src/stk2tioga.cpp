@@ -29,6 +29,37 @@ typedef stk::mesh::Field<double> ScalarFieldType;
 
 const double pi = std::acos(-1.0);
 
+void tag_procs(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
+{
+  int iproc = bulk.parallel_rank();
+  ScalarFieldType *ipnode = meta.get_field<ScalarFieldType>
+    (stk::topology::NODE_RANK, "pid_node");
+  ScalarFieldType *ipelem = meta.get_field<ScalarFieldType>
+    (stk::topology::ELEM_RANK, "pid_elem");
+
+  stk::mesh::Selector msel = meta.locally_owned_part();
+  const stk::mesh::BucketVector& nbkts = bulk.get_buckets(
+    stk::topology::NODE_RANK, msel);
+
+  for (auto b: nbkts) {
+    double* ip = stk::mesh::field_data(*ipnode, *b);
+    for(size_t in=0; in < b->size(); in++) {
+      ip[in] = iproc;
+    }
+  }
+
+  const stk::mesh::BucketVector& ebkts = bulk.get_buckets(
+    stk::topology::ELEM_RANK, msel);
+
+  for (auto b: ebkts) {
+    double* ip = stk::mesh::field_data(*ipelem, *b);
+    for(size_t in=0; in < b->size(); in++) {
+      ip[in] = iproc;
+    }
+  }
+}
+
+
 int main(int argc, char** argv)
 {
   stk::ParallelMachine comm = stk::parallel_machine_init(&argc, &argv);
@@ -36,7 +67,7 @@ int main(int argc, char** argv)
   int iproc = stk::parallel_machine_rank(comm);
   int nproc = stk::parallel_machine_size(comm);
   stk::mesh::MetaData meta;
-  stk::mesh::BulkData bulk(meta, comm);
+  stk::mesh::BulkData bulk(meta, comm, stk::mesh::BulkData::NO_AUTO_AURA);
 
   std::string yaml_filename;
   if (argc == 2) {
@@ -61,6 +92,13 @@ int main(int argc, char** argv)
   tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info);
   tg.setup();
 
+  ScalarFieldType& ipnode = meta.declare_field<ScalarFieldType>
+    (stk::topology::NODE_RANK, "pid_node");
+  ScalarFieldType& ipelem = meta.declare_field<ScalarFieldType>
+    (stk::topology::ELEM_RANK, "pid_elem");
+  stk::mesh::put_field(ipnode, meta.universal_part());
+  stk::mesh::put_field(ipelem, meta.universal_part());
+
   stkio.populate_bulk_data();
   tg.initialize();
 
@@ -68,11 +106,13 @@ int main(int argc, char** argv)
 
   tg.check_soln_norm();
 
+  stk::parallel_machine_barrier(bulk.parallel());
   bool do_write = true;
   if (inpfile["write_outputs"])
     do_write = inpfile["write_outputs"].as<bool>();
 
   if (do_write) {
+    tag_procs(meta, bulk);
     ScalarFieldType* ibf = meta.get_field<ScalarFieldType>(
       stk::topology::NODE_RANK, "iblank");
     ScalarFieldType* ibcell = meta.get_field<ScalarFieldType>(
@@ -84,21 +124,22 @@ int main(int argc, char** argv)
     size_t fh = stkio.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
     stkio.add_field(fh, *ibf);
     stkio.add_field(fh, *ibcell);
-    //stkio.add_field(fh, displ);
+    stkio.add_field(fh, ipnode);
+    stkio.add_field(fh, ipelem);
 
     stkio.begin_output_step(fh, 0.0);
     stkio.write_defined_output_fields(fh);
     stkio.end_output_step(fh);
 
-    stk::mesh::Entity node = bulk.get_entity(
-      stk::topology::NODE_RANK, 4332);
-    if (bulk.is_valid(node)) {
-      double* ibval = stk::mesh::field_data(*ibf, node);
-      std::cout << "IBLANK: " << iproc << "\t" << *ibval << "\t"
-                << bulk.bucket(node).owned() << std::endl;
-    } else {
-      std::cout << "IBLANK: " << iproc << "Doesnt exist" << std::endl;
-    }
+    // stk::mesh::Entity node = bulk.get_entity(
+    //   stk::topology::NODE_RANK, 4332);
+    // if (bulk.is_valid(node)) {
+    //   double* ibval = stk::mesh::field_data(*ibf, node);
+    //   std::cout << "IBLANK: " << iproc << "\t" << *ibval << "\t"
+    //             << bulk.bucket(node).owned() << std::endl;
+    // } else {
+    //   std::cout << "IBLANK: " << iproc << " Doesnt exist" << std::endl;
+    // }
   }
 
   // Bouncing cylinder moving mesh test

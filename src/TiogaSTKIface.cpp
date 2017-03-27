@@ -256,15 +256,6 @@ void TiogaSTKIface::update_fringe_info()
     }
     fout << std::endl;
     if (std::fabs(error) > maxError) maxError = error;
-
-    if (nodeID == 2241 || nodeID == 4332  ) {
-      std::cout << iproc << "\t" << nodeID << "\t" << donorID << "\t" << nid << "\t"
-                << mtag << "\t" << blocks_[mtag]->iblanks()[nid] << std::endl;
-      for (int i=0; i<3; i++) {
-        std::cout << "\t" << info->nodalCoords_[i];
-      }
-      std::cout << std::endl;
-    }
   }
   std::cout << "\nNalu CVFEM interpolation results: " << std::endl;
   std::cout << "Proc: " << iproc
@@ -273,6 +264,7 @@ void TiogaSTKIface::update_fringe_info()
 
 void TiogaSTKIface::check_soln_norm()
 {
+  stk::parallel_machine_barrier(bulk_.parallel());
   if (bulk_.parallel_rank() == 0) {
     std::cout << "\n\n-- Interpolation error statistics --\n"
               << "Proc ID.    BodyTag    Error" << std::endl;
@@ -286,7 +278,7 @@ void TiogaSTKIface::check_soln_norm()
   int nblocks = blocks_.size();
   for (int i=0; i<nblocks; i++) {
     auto& tb = blocks_[i];
-    double rnorm = tb->calculate_residuals(*tg_);
+    double rnorm = tb->calculate_residuals();
     std::cout << bulk_.parallel_rank() << "\t" << i << "\t" << rnorm << std::endl;
   }
 }

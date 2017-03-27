@@ -88,7 +88,7 @@ public:
 
   void register_solution(tioga&);
 
-  double calculate_residuals(tioga&);
+  double calculate_residuals();
 
   // Accessors
 
