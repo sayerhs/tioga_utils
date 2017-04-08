@@ -216,6 +216,10 @@ private:
   //! Receptor information for this mesh block
   std::vector<int> receptor_info_;
 
+  //! User specified cell and node resolutions
+  std::vector<double> node_res_;
+  std::vector<double> cell_res_;
+
   std::vector<double> qsol_;
 
   //! Dimensionality of the mesh

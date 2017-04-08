@@ -107,7 +107,7 @@ int main(int argc, char** argv)
   tg.check_soln_norm();
 
   stk::parallel_machine_barrier(bulk.parallel());
-  bool do_write = true;
+  bool do_write = false;
   if (inpfile["write_outputs"])
     do_write = inpfile["write_outputs"].as<bool>();
 

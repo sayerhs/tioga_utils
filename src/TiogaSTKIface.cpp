@@ -192,8 +192,8 @@ void TiogaSTKIface::update_fringe_info()
   double maxError = -1.0e16;
   int iproc = bulk_.parallel_rank();
   int nproc = bulk_.parallel_size();
-  std::string fname = "tioga_fringe." + std::to_string(nproc) + "." + std::to_string(iproc);
-  std::ofstream fout(fname, std::ios::out);
+  // std::string fname = "tioga_fringe." + std::to_string(nproc) + "." + std::to_string(iproc);
+  // std::ofstream fout(fname, std::ios::out);
   std::unique_ptr<sierra::nalu::MasterElement> meSCS(new sierra::nalu::HexSCS());
   std::vector<double> elemxyz(24);
   std::vector<double> intxyz(3);
@@ -249,12 +249,12 @@ void TiogaSTKIface::update_fringe_info()
     meSCS->interpolatePoint(3, info->isoCoords_.data(), elemxyz.data(), intxyz.data());
 
     double error = 0.0;
-    fout << nodeID << "\t" << donorID ;
+    //fout << nodeID << "\t" << donorID ;
     for (int i=0; i<3; i++) {
-      fout << "\t" << info->isoCoords_[i];
+      //fout << "\t" << info->isoCoords_[i];
       error += info->nodalCoords_[i] - intxyz[i];
     }
-    fout << std::endl;
+    //fout << std::endl;
     if (std::fabs(error) > maxError) maxError = error;
   }
   std::cout << "\nNalu CVFEM interpolation results: " << std::endl;

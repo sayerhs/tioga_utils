@@ -216,6 +216,7 @@ void TiogaBlock::process_nodes()
     num_nodes_ = ncount;
     xyz_.resize(ndim_ * num_nodes_);
     iblank_.resize(num_nodes_, 1);
+    node_res_.resize(num_nodes_, 1.0*meshtag_);
 
     // Should we clear node_map_???
     // node_map_.clear();
@@ -323,6 +324,7 @@ void TiogaBlock::process_elements()
 
   // 3. Populate TIOGA data structures
   int idx = 0;
+  int cres_count = 0;
   for (auto kv: conn_map_) {
     num_verts_[idx] = kv.first;
     num_cells_[idx] = kv.second;
@@ -330,11 +332,13 @@ void TiogaBlock::process_elements()
     conn_ids[kv.first] = idx;
     conn_offsets[kv.first] = 0;
     idx++;
+    cres_count += kv.first * kv.second;
   }
 
   int tot_elems = std::accumulate(num_cells_.begin(), num_cells_.end(), 0);
   elemid_map_.resize(tot_elems);
   iblank_cell_.resize(tot_elems);
+  cell_res_.resize(cres_count, 1.0*meshtag_);
 
   // 4. Create connectivity map based on local node index (xyz_)
   int ep = 0;
@@ -384,6 +388,7 @@ void TiogaBlock::register_block(tioga& tg)
   );
   // Indicate that we want element IBLANK information returned
   tg.set_cell_iblank(meshtag_, iblank_cell_.data());
+  //tg.setResolutions(meshtag_, node_res_.data(), cell_res_.data());
 }
 
 void TiogaBlock::register_solution(tioga& tg)
