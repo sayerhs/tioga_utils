@@ -1,0 +1,31 @@
+# -*- mode: yaml -*-
+
+# Example input file for the TIOGA utilities driver `stk2tioga`
+
+
+# Input exodus database
+input_mesh: overset_cylinder.exo
+
+# Name of the output exodus database (if desired)
+output_mesh: overset/cylinder.e
+
+# Flag to control output of hole-cut data (useful for debugging)
+write_outputs: true
+
+# STK mesh decomposition type for parallel runs
+decomposition_method: rcb
+
+# Overset mesh information
+overset_info:
+  mesh_group:
+    - overset_name: cylinder
+      mesh_parts: [ Unspecified-2-HEX ]
+      wall_parts: [ wall ]
+      ovset_parts: [ overset1 ]
+
+    - overset_name: wake_refinement
+      mesh_parts: [ Unspecified-3-HEX ]
+      ovset_parts: [ overset2 ]
+
+    - overset_name: background_mesh
+      mesh_parts: [ Unspecified-4-HEX ]
