@@ -25,9 +25,13 @@ find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
 find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp )
 include_directories(${YAML_INCLUDES}/..)
 
-find_library(TIOGA_LIBS NAMES libtioga.a PATHS ${TIOGA_DIR}/build)
-find_path(TIOGA_INCLUDES tioga.h PATHS ${TIOGA_DIR}/src)
-include_directories(${TIOGA_DIR}/src)
+# find_library(TIOGA_LIBS NAMES libtioga.a PATHS ${TIOGA_DIR}/build)
+# find_path(TIOGA_INCLUDES tioga.h PATHS ${TIOGA_DIR}/src)
+# include_directories(${TIOGA_DIR}/src)
+
+set(CMAKE_PREFIX_PATH ${TIOGA_DIR} ${CMAKE_PREFIX_PATH})
+find_package(TIOGA REQUIRED)
+include_directories(${TIOGA_INCLUDE_DIRS})
 
 find_library(NALU_LIBS NAMES libnalu.a PATHS ${NALU_DIR}/build)
 find_path(NALU_INCLUDES Realm.h PATHS ${NALU_DIR}/include)
@@ -84,4 +88,4 @@ add_executable(stk2tioga
   TiogaBlock.cpp
   TiogaSTKIface.cpp
   stk2tioga.cpp)
-target_link_libraries(stk2tioga ${NALU_LIBS} ${Trilinos_LIBRARIES} ${YAML_LIBRARY} ${TIOGA_LIBS})
+target_link_libraries(stk2tioga ${NALU_LIBS} ${Trilinos_LIBRARIES} ${YAML_LIBRARY} ${TIOGA_LIBRARIES})

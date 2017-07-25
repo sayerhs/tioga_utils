@@ -59,6 +59,31 @@ void tag_procs(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
   }
 }
 
+void move_mesh(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
+{
+  double omega = 4.0 * 6.81041368647038;
+  VectorFieldType* coords = meta.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, "coordinates");
+
+  stk::mesh::PartVector pvec(6);
+  for (int i=0; i < 6; i++) {
+    std::string pname = "Unspecified-" + std::to_string(i+2) + "-HEX";
+    pvec[i] = meta.get_part(pname);
+  }
+
+  stk::mesh::Selector mselect = stk::mesh::selectUnion(pvec);
+  stk::mesh::BucketVector bkts = bulk.get_buckets(
+    stk::topology::NODE_RANK, mselect);
+  for (auto b: bkts) {
+    for (size_t in=0; in < b->size(); in++) {
+      double *pts = stk::mesh::field_data(*coords, (*b)[in]);
+      double xold = pts[0];
+      double zold = pts[2];
+      pts[0] = xold * std::cos(omega) + zold * std::sin(omega);
+      pts[2] = - xold * std::sin(omega) + zold * std::cos(omega);
+    }
+  }
+}
 
 int main(int argc, char** argv)
 {
@@ -79,8 +104,10 @@ int main(int argc, char** argv)
 
   stk::io::StkMeshIoBroker stkio(comm);
 
-  if (nproc > 1)
-    stkio.property_add(Ioss::Property("DECOMPOSITION_METHOD", "rcb"));
+  if ((nproc > 1) && inpfile["decomposition_method"]) {
+    auto decomp_method = inpfile["decomposition_method"].as<std::string>();
+    stkio.property_add(Ioss::Property("DECOMPOSITION_METHOD", decomp_method));
+  }
 
   std::string inp_mesh = inpfile["input_mesh"].as<std::string>();
   stkio.add_mesh_database(inp_mesh, stk::io::READ_MESH);
@@ -107,7 +134,7 @@ int main(int argc, char** argv)
   tg.check_soln_norm();
 
   stk::parallel_machine_barrier(bulk.parallel());
-  bool do_write = false;
+  bool do_write = true;
   if (inpfile["write_outputs"])
     do_write = inpfile["write_outputs"].as<bool>();
 
@@ -130,47 +157,7 @@ int main(int argc, char** argv)
     stkio.begin_output_step(fh, 0.0);
     stkio.write_defined_output_fields(fh);
     stkio.end_output_step(fh);
-
-    // stk::mesh::Entity node = bulk.get_entity(
-    //   stk::topology::NODE_RANK, 4332);
-    // if (bulk.is_valid(node)) {
-    //   double* ibval = stk::mesh::field_data(*ibf, node);
-    //   std::cout << "IBLANK: " << iproc << "\t" << *ibval << "\t"
-    //             << bulk.bucket(node).owned() << std::endl;
-    // } else {
-    //   std::cout << "IBLANK: " << iproc << " Doesnt exist" << std::endl;
-    // }
   }
-
-  // Bouncing cylinder moving mesh test
-  // VectorFieldType& displ = meta.declare_field<VectorFieldType>(
-  //   stk::topology::NODE_RANK, "mesh_displacement");
-  // stk::mesh::Part* cyl_block = meta.get_part("cylinder");
-  // stk::mesh::put_field(displ, *cyl_block);
-  // VectorFieldType* coords = meta.get_field<VectorFieldType>(
-  //   stk::topology::NODE_RANK, "coordinates");
-
-  // for (int i=0; i<41; i++) {
-  //   //std::cout << bulk.parallel_rank() << "\t" << i << std::endl;
-  //   stk::mesh::Selector mselect(*cyl_block);
-  //   stk::mesh::BucketVector bkts = bulk.get_buckets(
-  //     stk::topology::NODE_RANK, mselect);
-  //   for (auto b: bkts) {
-  //     for (size_t in=0; in < b->size(); in++) {
-  //       double* pts = stk::mesh::field_data(*coords, (*b)[in]);
-  //       double* dx = stk::mesh::field_data(displ, (*b)[in]);
-  //       pts[0] += 0.1;
-  //       pts[2] += std::sin(2.0*pi/40.0*i) - dx[2];
-  //       dx[0] = i*0.1;
-  //       dx[2] = std::sin(2.0*pi/40.0*i);
-  //     }
-  //   }
-
-  //   tg.execute();
-  //   stkio.begin_output_step(fh, 1.0*(i+1));
-  //   stkio.write_defined_output_fields(fh);
-  //   stkio.end_output_step(fh);
-  // }
 
   stk::parallel_machine_finalize();
   return 0;
