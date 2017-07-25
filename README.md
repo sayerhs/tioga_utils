@@ -15,6 +15,17 @@ The following dependencies must be available on your system:
 
 See [`share/cmake_configure.sh`](https://github.com/sayerhs/tioga_utils/blob/master/share/cmake-configure.sh) for an example CMake configuration script. 
 
+```
+git clone https://github.com/sayerhs/tioga_utils.git
+cd tioga_utils
+mkdir build
+cd build
+cp ../share/cmake_configure.sh 
+# EDIT script as necessary
+./cmake_configure.sh 
+make 
+```
+
 ## Usage
 
 ```
