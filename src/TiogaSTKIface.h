@@ -68,6 +68,9 @@ public:
    */
   void execute();
 
+  /** Check interpolation errors from overset on a linear field function
+   *
+   */
   void check_soln_norm();
 
 private:

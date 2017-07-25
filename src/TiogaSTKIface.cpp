@@ -249,17 +249,20 @@ void TiogaSTKIface::update_fringe_info()
     meSCS->interpolatePoint(3, info->isoCoords_.data(), elemxyz.data(), intxyz.data());
 
     double error = 0.0;
-    //fout << nodeID << "\t" << donorID ;
     for (int i=0; i<3; i++) {
-      //fout << "\t" << info->isoCoords_[i];
       error += info->nodalCoords_[i] - intxyz[i];
     }
-    //fout << std::endl;
     if (std::fabs(error) > maxError) maxError = error;
   }
-  std::cout << "\nNalu CVFEM interpolation results: " << std::endl;
-  std::cout << "Proc: " << iproc
-            << "; Max error = " << maxError << std::endl;
+
+  if (bulk_.parallel_rank() == 0)
+    std::cout << "\nNalu CVFEM interpolation results: " << std::endl;
+
+  stk::parallel_machine_barrier(bulk_.parallel());
+  if (ncount > 0) {
+    std::cout << "    Proc: " << iproc
+              << "; Max error = " << maxError << std::endl;
+  }
 }
 
 void TiogaSTKIface::check_soln_norm()
@@ -267,7 +270,7 @@ void TiogaSTKIface::check_soln_norm()
   stk::parallel_machine_barrier(bulk_.parallel());
   if (bulk_.parallel_rank() == 0) {
     std::cout << "\n\n-- Interpolation error statistics --\n"
-              << "Proc ID.    BodyTag    Error" << std::endl;
+              << "Proc ID.    BodyTag    Error(L2 norm)" << std::endl;
   }
   for (auto& tb: blocks_) {
     tb->register_solution(*tg_);
