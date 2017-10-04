@@ -2,6 +2,7 @@
 #include "TiogaSTKIface.h"
 
 #include "master_element/MasterElement.h"
+#include "master_element/Hex8CVFEM.h"
 #include "stk_util/parallel/ParallelReduce.hpp"
 
 #include <iostream>
