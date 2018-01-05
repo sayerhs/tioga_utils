@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 2.8.11)
 
-project(TIOGA_UTILS CXX)
+project(TIOGA_UTILS CXX Fortran)
 
 find_package(MPI REQUIRED)
 
