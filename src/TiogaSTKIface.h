@@ -73,6 +73,10 @@ public:
    */
   void check_soln_norm();
 
+  /** Return the TIOGA interface object */
+  tioga& tioga_iface()
+  { return *tg_; }
+
 private:
   TiogaSTKIface() = delete;
   TiogaSTKIface(const TiogaSTKIface&) = delete;

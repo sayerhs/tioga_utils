@@ -23,6 +23,7 @@
 #include <cmath>
 
 #include "TiogaSTKIface.h"
+#include "tioga.h"
 
 typedef stk::mesh::Field<double, stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double> ScalarFieldType;
@@ -159,6 +160,17 @@ int main(int argc, char** argv)
     stkio.end_output_step(fh);
   }
 
-  stk::parallel_machine_finalize();
+  bool dump_partitions = false;
+  if (inpfile["dump_tioga_partitions"])
+      dump_partitions = inpfile["dump_tioga_partitions"].as<bool>();
+  if (dump_partitions) {
+      if (iproc == 0)
+          std::cout << "Dumping tioga partitions... " << std::endl;
+      tg.tioga_iface().writeData(0, 0);
+  }
+
+  stk::parallel_machine_barrier(bulk.parallel());
+
+  // stk::parallel_machine_finalize();
   return 0;
 }
