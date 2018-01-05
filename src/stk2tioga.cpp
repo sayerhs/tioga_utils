@@ -110,6 +110,8 @@ int main(int argc, char** argv)
     stkio.property_add(Ioss::Property("DECOMPOSITION_METHOD", decomp_method));
   }
 
+  if (iproc == 0)
+      std::cout << "Preparing mesh meta data... " << std::endl;
   std::string inp_mesh = inpfile["input_mesh"].as<std::string>();
   stkio.add_mesh_database(inp_mesh, stk::io::READ_MESH);
   stkio.set_bulk_data(bulk);
@@ -118,6 +120,8 @@ int main(int argc, char** argv)
 
   const YAML::Node& oset_info = inpfile["overset_info"];
   tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info);
+  if (iproc == 0)
+      std::cout << "Calling TIOGA setup... " << std::endl;
   tg.setup();
 
   ScalarFieldType& ipnode = meta.declare_field<ScalarFieldType>
@@ -127,14 +131,22 @@ int main(int argc, char** argv)
   stk::mesh::put_field(ipnode, meta.universal_part());
   stk::mesh::put_field(ipelem, meta.universal_part());
 
+  if (iproc == 0)
+      std::cout << "Loading mesh... " << std::endl;
   stkio.populate_bulk_data();
+  if (iproc == 0)
+      std::cout << "Initializing TIOGA... " << std::endl;
   tg.initialize();
 
+  if (iproc == 0)
+      std::cout << "Performing overset connectivity... " << std::endl;
   tg.execute();
 
-  tg.check_soln_norm();
+  if (iproc == 0)
+      std::cout << "Checking interpolation norms... " << std::endl;
 
   stk::parallel_machine_barrier(bulk.parallel());
+  tg.check_soln_norm();
   bool do_write = true;
   if (inpfile["write_outputs"])
     do_write = inpfile["write_outputs"].as<bool>();
