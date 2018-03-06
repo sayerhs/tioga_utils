@@ -451,8 +451,15 @@ TiogaSTKIface::populate_overset_info()
         elemxyz[offset] = exyz[j];
       }
     }
-    meSCS->isInElement(
+    const double nearestDistance = meSCS->isInElement(
       elemxyz.data(), info.nodalCoords_.data(), info.isoCoords_.data());
+#if 1
+    if (nearestDistance > (1.0 + 1.0e-8))
+        std::cerr
+            << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
+            << "iso-parametric distance is greater than 1.0: " << nearestDistance
+            << std::endl;
+#endif
     meSCS->interpolatePoint(3, info.isoCoords_.data(), elemxyz.data(), intxyz.data());
 
     double error = 0.0;
