@@ -248,16 +248,25 @@ void TiogaSTKIface::update_fringe_info()
     }
 
     const stk::mesh::Entity* elem_nodes = bulk_.begin_nodes(elem);
+    const int nodesPerElem = bulk_.num_nodes(elem);
     for (unsigned int in=0; in<bulk_.num_nodes(elem); in++) {
       stk::mesh::Entity enode = elem_nodes[in];
       const double* exyz = stk::mesh::field_data(*coords, enode);
       for (int j=0; j < 3; j++) {
-        const int offset = j * 8 + in;
+        const int offset = j * nodesPerElem + in;
         elemxyz[offset] = exyz[j];
       }
     }
-    meSCS->isInElement(
+    const double nearestDistance = meSCS->isInElement(
       elemxyz.data(), info->nodalCoords_.data(), info->isoCoords_.data());
+#if 1
+    if (nearestDistance > (1.0 + 1.0e-8))
+        std::cerr
+            << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
+            << "iso-parametric distance is greater than 1.0: " << nearestDistance
+            << "; num nodes on element = " << bulk_.num_nodes(elem)
+            << std::endl;
+#endif
     meSCS->interpolatePoint(3, info->isoCoords_.data(), elemxyz.data(), intxyz.data());
 
     double error = 0.0;
@@ -431,15 +440,16 @@ TiogaSTKIface::populate_overset_info()
 
     const stk::topology elemTopo = bulk_.bucket(elem).topology();
     sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
-    std::vector<double> elemxyz(24);
+    const int nodesPerElem = bulk_.num_nodes(elem);
+    std::vector<double> elemxyz(3*nodesPerElem, 0.0);
     std::vector<double> intxyz(3);
     OversetInfo info;
     info.node_ = node;
     info.donorElem_ = elem;
 
     const double* nxyz = stk::mesh::field_data(*coords, node);
-    for (int i=0; i<3; i++) {
-      info.nodalCoords_[i] = nxyz[i];
+    for (int j=0; j<3; j++) {
+      info.nodalCoords_[j] = nxyz[j];
     }
 
     const stk::mesh::Entity* elem_nodes = bulk_.begin_nodes(elem);
@@ -447,7 +457,7 @@ TiogaSTKIface::populate_overset_info()
       stk::mesh::Entity enode = elem_nodes[in];
       const double* exyz = stk::mesh::field_data(*coords, enode);
       for (int j=0; j < 3; j++) {
-        const int offset = j * 8 + in;
+        const int offset = j * nodesPerElem + in;
         elemxyz[offset] = exyz[j];
       }
     }
@@ -458,6 +468,7 @@ TiogaSTKIface::populate_overset_info()
         std::cerr
             << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
             << "iso-parametric distance is greater than 1.0: " << nearestDistance
+            << "; num nodes on element = " << bulk_.num_nodes(elem)
             << std::endl;
 #endif
     meSCS->interpolatePoint(3, info.isoCoords_.data(), elemxyz.data(), intxyz.data());
