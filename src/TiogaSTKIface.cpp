@@ -417,6 +417,7 @@ TiogaSTKIface::populate_overset_info()
   int iproc = bulk_.parallel_rank();
   int nproc = bulk_.parallel_size();
   double maxError = -1.0e16;
+  std::ofstream outfile;
 
   std::vector<double> elemCoords;
 
@@ -464,12 +465,32 @@ TiogaSTKIface::populate_overset_info()
     const double nearestDistance = meSCS->isInElement(
       elemxyz.data(), info.nodalCoords_.data(), info.isoCoords_.data());
 #if 1
-    if (nearestDistance > (1.0 + 1.0e-8))
+    if (nearestDistance > (1.0 + 1.0e-8)) {
         std::cerr
             << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
             << "iso-parametric distance is greater than 1.0: " << nearestDistance
             << "; num nodes on element = " << bulk_.num_nodes(elem)
             << std::endl;
+
+        if (!outfile.is_open()) {
+            std::string fname = "fringe_mismatch." + std::to_string(nproc)
+                + "." + std::to_string(iproc);
+            outfile.open(fname, std::ios::out);
+        }
+        outfile << nodeID << "\t" << donorID << "\t" << nodesPerElem << std::endl;
+        for (int j=0; j < 3; j++)
+            outfile << info.nodalCoords_[j] << "\t";
+        outfile << std::endl;
+        for (int j=0; j < 3; j++)
+            outfile << info.isoCoords_[j] << "\t";
+        outfile << std::endl;
+        for (int in=0; in < nodesPerElem; in++) {
+            for (int j=0; j < nDim; j++)
+                outfile << elemxyz[j * nodesPerElem + in] << "\t";
+            outfile << std::endl;
+        }
+        outfile << std::endl;
+    }
 #endif
     meSCS->interpolatePoint(3, info.isoCoords_.data(), elemxyz.data(), intxyz.data());
 
@@ -488,6 +509,8 @@ TiogaSTKIface::populate_overset_info()
     std::cout << "    Proc: " << iproc
               << "; Max error = " << maxError << std::endl;
   }
+
+  if (outfile.is_open()) outfile.close();
 }
 
 }  // tioga
