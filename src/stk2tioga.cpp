@@ -15,6 +15,7 @@
 #include <stk_mesh/base/Stencils.hpp>
 #include <stk_mesh/base/TopologyDimensions.hpp>
 #include <stk_mesh/base/FEMHelpers.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
 
 #include <stk_io/IossBridge.hpp>
 #include <stk_io/StkMeshIoBroker.hpp>
@@ -59,6 +60,9 @@ void tag_procs(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
       ip[in] = iproc;
     }
   }
+
+  std::vector<const stk::mesh::FieldBase*> fieldVec{ipnode, ipelem};
+  stk::mesh::communicate_field_data(bulk, fieldVec);
 }
 
 void move_mesh(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
