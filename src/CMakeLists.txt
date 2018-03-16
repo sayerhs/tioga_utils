@@ -34,6 +34,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS}")
 add_executable(stk2tioga
   TiogaBlock.cpp
   TiogaSTKIface.cpp
+
+  MotionBase.cpp
+  MeshRotation.cpp
+  MeshMotion.cpp
+
   stk2tioga.cpp)
 target_link_libraries(stk2tioga
   ${NALU_LIBRARIES}

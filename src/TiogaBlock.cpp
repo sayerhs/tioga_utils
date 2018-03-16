@@ -13,9 +13,11 @@ TiogaBlock::TiogaBlock(
   stk::mesh::MetaData& meta,
   stk::mesh::BulkData& bulk,
   const YAML::Node& node,
+  const std::string& coordsName,
   const int meshtag
 ) : meta_(meta),
     bulk_(bulk),
+    coordsName_(coordsName),
     ndim_(meta_.spatial_dimension()),
     meshtag_(meshtag)
 {
@@ -80,7 +82,7 @@ void TiogaBlock::update_coords()
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
   VectorFieldType* coords = meta_.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "coordinates");
+    stk::topology::NODE_RANK, coordsName_);
 
   int ip = 0;
   for (auto b: mbkts) {
@@ -207,7 +209,7 @@ void TiogaBlock::process_nodes()
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
   VectorFieldType* coords = meta_.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "coordinates");
+    stk::topology::NODE_RANK, coordsName_);
 
   int ncount = 0;
   for (auto b: mbkts) ncount += b->size();

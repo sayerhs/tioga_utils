@@ -46,7 +46,8 @@ public:
    */
   TiogaSTKIface(stk::mesh::MetaData&,
                 stk::mesh::BulkData&,
-                const YAML::Node&);
+                const YAML::Node&,
+                const std::string&);
 
   ~TiogaSTKIface();
 
@@ -154,6 +155,8 @@ private:
     //! ghosted to another MPI rank to ensure that owned and shared nodes are
     //! consistent.
     std::vector<stk::mesh::EntityId> donorIDs_;
+
+    std::string coordsName_;
 };
 
 

@@ -40,6 +40,7 @@ public:
   TiogaBlock(stk::mesh::MetaData&,
              stk::mesh::BulkData&,
              const YAML::Node&,
+             const std::string&,
              const int);
 
   ~TiogaBlock();
@@ -221,6 +222,8 @@ private:
   std::vector<double> cell_res_;
 
   std::vector<double> qsol_;
+
+  std::string coordsName_;
 
   //! Dimensionality of the mesh
   int ndim_;

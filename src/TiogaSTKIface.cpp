@@ -20,12 +20,14 @@ namespace tioga_nalu {
 TiogaSTKIface::TiogaSTKIface(
   stk::mesh::MetaData& meta,
   stk::mesh::BulkData& bulk,
-  const YAML::Node& node
+  const YAML::Node& node,
+  const std::string& coordsName
 ) : meta_(meta),
     bulk_(bulk),
     tg_(new tioga()),
     ovsetGhosting_(nullptr),
-    inactivePartName_("nalu_overset_hole_elements")
+    inactivePartName_("nalu_overset_hole_elements"),
+    coordsName_(coordsName)
 {
   load(node);
 }
@@ -42,7 +44,8 @@ TiogaSTKIface::load(const YAML::Node& node)
   blocks_.resize(num_meshes);
 
   for (int i = 0; i < num_meshes; i++) {
-    blocks_[i].reset(new TiogaBlock(meta_, bulk_, oset_groups[i], i + 1));
+    blocks_[i].reset(
+        new TiogaBlock(meta_, bulk_, oset_groups[i], coordsName_, i + 1));
   }
 }
 
@@ -215,7 +218,7 @@ void TiogaSTKIface::update_fringe_info()
   //std::cout << bulk_.parallel_rank() << "\t" << receptors.size();
 
   VectorFieldType *coords = meta_.get_field<VectorFieldType>
-    (stk::topology::NODE_RANK, "coordinates");
+    (stk::topology::NODE_RANK, coordsName_);
   size_t ncount = receptors.size();
   for (size_t i=0, ip=0; i<ncount; i+=3, ip++) {
     int nid = receptors[i];                          // TiogaBlock node index
@@ -289,10 +292,10 @@ void TiogaSTKIface::update_fringe_info()
 void TiogaSTKIface::check_soln_norm()
 {
   stk::parallel_machine_barrier(bulk_.parallel());
-  if (bulk_.parallel_rank() == 0) {
-    std::cout << "\n\n-- Interpolation error statistics --\n"
-              << "Proc ID.    BodyTag    Error(L2 norm)" << std::endl;
-  }
+  // if (bulk_.parallel_rank() == 0) {
+  //   std::cout << "\n\n-- Interpolation error statistics --\n"
+  //             << "Proc ID.    BodyTag    Error(L2 norm)" << std::endl;
+  // }
   for (auto& tb: blocks_) {
     tb->register_solution(*tg_);
   }
@@ -300,11 +303,18 @@ void TiogaSTKIface::check_soln_norm()
   tg_->dataUpdate(1, 0);
 
   int nblocks = blocks_.size();
+  double maxNorm = -1.0e16;
+  double g_maxNorm = -1.0e16;
   for (int i=0; i<nblocks; i++) {
     auto& tb = blocks_[i];
     double rnorm = tb->calculate_residuals();
-    std::cout << bulk_.parallel_rank() << "\t" << i << "\t" << rnorm << std::endl;
+    maxNorm = std::max(rnorm, maxNorm);
   }
+
+  stk::all_reduce_max(bulk_.parallel(), &maxNorm, &g_maxNorm, 1);
+  if (bulk_.parallel_rank() == 0)
+      std::cout << "TIOGA Interpolation error: max L2 error: "
+                << g_maxNorm << std::endl;
 }
 
 void
@@ -422,7 +432,7 @@ TiogaSTKIface::populate_overset_info()
   std::vector<double> elemCoords;
 
   VectorFieldType *coords = meta_.get_field<VectorFieldType>
-    (stk::topology::NODE_RANK, "coordinates");
+    (stk::topology::NODE_RANK, coordsName_);
 
   size_t numReceptors = receptorIDs_.size();
   for (size_t i=0; i < numReceptors; i++) {
@@ -501,14 +511,12 @@ TiogaSTKIface::populate_overset_info()
     if (std::fabs(error) > maxError) maxError = error;
   }
 
-  if (bulk_.parallel_rank() == 0)
-    std::cout << "\nNalu CVFEM interpolation results: " << std::endl;
-
   stk::parallel_machine_barrier(bulk_.parallel());
-  if (numReceptors > 0) {
-    std::cout << "    Proc: " << iproc
-              << "; Max error = " << maxError << std::endl;
-  }
+  double g_maxError = -1.0e16;
+  stk::all_reduce_max(bulk_.parallel(), &maxError, &g_maxError, 1);
+  if (iproc == 0)
+      std::cout << "Nalu CVFEM interpolation results: max error = " << g_maxError
+                << std::endl;
 
   if (outfile.is_open()) outfile.close();
 }

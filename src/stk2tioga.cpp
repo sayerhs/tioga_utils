@@ -23,6 +23,7 @@
 #include <cmath>
 
 #include "TiogaSTKIface.h"
+#include "MeshMotion.h"
 #include "tioga.h"
 
 typedef stk::mesh::Field<double, stk::mesh::Cartesian> VectorFieldType;
@@ -86,6 +87,53 @@ void move_mesh(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
   }
 }
 
+void write_mesh(
+    const YAML::Node& inpfile,
+    stk::mesh::MetaData& meta,
+    stk::mesh::BulkData& bulk,
+    stk::io::StkMeshIoBroker& stkio,
+    const double time=0.0)
+{
+  bool do_write = true;
+  if (inpfile["write_outputs"])
+    do_write = inpfile["write_outputs"].as<bool>();
+  if (!do_write) return;
+
+  bool has_motion = false;
+  if (inpfile["motion_info"])
+    has_motion = true;
+
+  tag_procs(meta, bulk);
+  ScalarFieldType* ibf = meta.get_field<ScalarFieldType>(
+      stk::topology::NODE_RANK, "iblank");
+  ScalarFieldType* ibcell = meta.get_field<ScalarFieldType>(
+      stk::topology::ELEM_RANK, "iblank_cell");
+  ScalarFieldType *ipnode = meta.get_field<ScalarFieldType>
+      (stk::topology::NODE_RANK, "pid_node");
+  ScalarFieldType *ipelem = meta.get_field<ScalarFieldType>
+      (stk::topology::ELEM_RANK, "pid_elem");
+
+  std::string out_mesh = inpfile["output_mesh"].as<std::string>();
+  if (bulk.parallel_rank() == 0)
+      std::cout << "Writing output file: " << out_mesh << std::endl;
+  size_t fh = stkio.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
+  stkio.add_field(fh, *ibf);
+  stkio.add_field(fh, *ibcell);
+  stkio.add_field(fh, *ipnode);
+  stkio.add_field(fh, *ipelem);
+
+  if (has_motion) {
+      VectorFieldType* mesh_disp = meta.get_field<VectorFieldType>(
+          stk::topology::NODE_RANK, "mesh_displacement");
+      stkio.add_field(fh, *mesh_disp);
+  }
+
+  stkio.begin_output_step(fh, time);
+  stkio.write_defined_output_fields(fh);
+  stkio.end_output_step(fh);
+}
+
+
 int main(int argc, char** argv)
 {
   stk::ParallelMachine comm = stk::parallel_machine_init(&argc, &argv);
@@ -118,10 +166,25 @@ int main(int argc, char** argv)
   stkio.create_input_mesh();
   stkio.add_all_mesh_fields_as_input_fields();
 
+  bool has_motion = false;
+  std::unique_ptr<tioga_nalu::MeshMotion> mesh_motion;
+  if (inpfile["motion_info"]) {
+      has_motion = true;
+  }
+
+  std::string coords_name = "coordinates";
+  if (has_motion) {
+      mesh_motion.reset(
+          new tioga_nalu::MeshMotion(meta, bulk, inpfile["motion_info"]));
+      coords_name = "current_coordinates";
+  }
+
   const YAML::Node& oset_info = inpfile["overset_info"];
-  tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info);
+  tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info, coords_name);
+
   if (iproc == 0)
       std::cout << "Calling TIOGA setup... " << std::endl;
+  if (has_motion) mesh_motion->setup();
   tg.setup();
 
   ScalarFieldType& ipnode = meta.declare_field<ScalarFieldType>
@@ -134,43 +197,20 @@ int main(int argc, char** argv)
   if (iproc == 0)
       std::cout << "Loading mesh... " << std::endl;
   stkio.populate_bulk_data();
+
   if (iproc == 0)
       std::cout << "Initializing TIOGA... " << std::endl;
+  if (has_motion) mesh_motion->initialize();
   tg.initialize();
 
   if (iproc == 0)
       std::cout << "Performing overset connectivity... " << std::endl;
   tg.execute();
 
-  if (iproc == 0)
-      std::cout << "Checking interpolation norms... " << std::endl;
-
   stk::parallel_machine_barrier(bulk.parallel());
   tg.check_soln_norm();
-  bool do_write = true;
-  if (inpfile["write_outputs"])
-    do_write = inpfile["write_outputs"].as<bool>();
 
-  if (do_write) {
-    tag_procs(meta, bulk);
-    ScalarFieldType* ibf = meta.get_field<ScalarFieldType>(
-      stk::topology::NODE_RANK, "iblank");
-    ScalarFieldType* ibcell = meta.get_field<ScalarFieldType>(
-      stk::topology::ELEM_RANK, "iblank_cell");
-
-    std::string out_mesh = inpfile["output_mesh"].as<std::string>();
-    if (iproc == 0)
-      std::cout << "Writing output file: " << out_mesh << std::endl;
-    size_t fh = stkio.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
-    stkio.add_field(fh, *ibf);
-    stkio.add_field(fh, *ibcell);
-    stkio.add_field(fh, ipnode);
-    stkio.add_field(fh, ipelem);
-
-    stkio.begin_output_step(fh, 0.0);
-    stkio.write_defined_output_fields(fh);
-    stkio.end_output_step(fh);
-  }
+  write_mesh(inpfile, meta, bulk, stkio, 0.0);
 
   bool dump_partitions = false;
   if (inpfile["dump_tioga_partitions"])
@@ -182,7 +222,6 @@ int main(int argc, char** argv)
   }
 
   stk::parallel_machine_barrier(bulk.parallel());
-
-  // stk::parallel_machine_finalize();
+  stk::parallel_machine_finalize();
   return 0;
 }
