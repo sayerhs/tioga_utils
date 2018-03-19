@@ -511,12 +511,14 @@ TiogaSTKIface::populate_overset_info()
     if (std::fabs(error) > maxError) maxError = error;
   }
 
+#if 0
   stk::parallel_machine_barrier(bulk_.parallel());
   double g_maxError = -1.0e16;
   stk::all_reduce_max(bulk_.parallel(), &maxError, &g_maxError, 1);
   if (iproc == 0)
       std::cout << "Nalu CVFEM interpolation results: max error = " << g_maxError
                 << std::endl;
+#endif
 
   if (outfile.is_open()) outfile.close();
 }

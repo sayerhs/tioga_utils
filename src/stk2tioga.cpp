@@ -238,6 +238,7 @@ int main(int argc, char** argv)
                         << "; " << mesh_motion->current_time()
                         << " s" << std::endl;
           tg.execute();
+          tg.check_soln_norm();
           print_memory_diag(bulk);
       }
   }
