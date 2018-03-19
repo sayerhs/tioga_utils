@@ -234,7 +234,8 @@ int main(int argc, char** argv)
       for (int nt =0; nt < nsteps; nt++) {
           mesh_motion->execute(nt);
           if (iproc == 0)
-              std::cout << "Time step/time = " << (nt + 1)
+              std::cout << "--------------------------------------------------\n"
+                        << "Time step/time = " << (nt + 1)
                         << "; " << mesh_motion->current_time()
                         << " s" << std::endl;
           tg.execute();
