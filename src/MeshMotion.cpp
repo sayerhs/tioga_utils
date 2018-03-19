@@ -70,7 +70,8 @@ void MeshMotion::initialize()
 
 void MeshMotion::execute(const int istep)
 {
-    const double curr_time = startTime_ + istep * deltaT_;
+    const double curr_time = startTime_ + (istep + 1) * deltaT_;
+    currentTime_ = curr_time;
 
     for (auto& mm: meshMotionVec_)
         mm->execute(curr_time);

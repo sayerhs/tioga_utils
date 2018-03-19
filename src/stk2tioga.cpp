@@ -4,6 +4,8 @@
 
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/BroadcastArg.hpp>
+#include <stk_util/environment/WallTime.hpp>
+#include <stk_util/environment/perf_util.hpp>
 
 #include <stk_mesh/base/FindRestriction.hpp>
 #include <stk_mesh/base/MetaData.hpp>
@@ -31,6 +33,20 @@ typedef stk::mesh::Field<double, stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double> ScalarFieldType;
 
 const double pi = std::acos(-1.0);
+
+void print_memory_diag(const stk::mesh::BulkData& bulk)
+{
+    const double factor = 1024.0;
+    size_t curr_max, curr_min, curr_avg;
+    stk::get_current_memory_usage_across_processors(
+        bulk.parallel(), curr_max, curr_min, curr_avg);
+
+    if (bulk.parallel_rank() == 0)
+        std::cout << "Memory usage (KB): Avg. = "
+                  << 1.0 * curr_avg / factor << "; Min. = "
+                  << 1.0 * curr_min / factor << "; Max. = "
+                  << 1.0 * curr_max / factor << std::endl;
+}
 
 void tag_procs(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
 {
@@ -208,13 +224,29 @@ int main(int argc, char** argv)
   tg.initialize();
 
   if (iproc == 0)
-      std::cout << "Performing overset connectivity... " << std::endl;
+      std::cout << "Performing initial overset connectivity... " << std::endl;
   tg.execute();
+  print_memory_diag(bulk);
+
+  if (has_motion) {
+      int nsteps = mesh_motion->num_steps();
+
+      for (int nt =0; nt < nsteps; nt++) {
+          mesh_motion->execute(nt);
+          if (iproc == 0)
+              std::cout << "Time step/time = " << (nt + 1)
+                        << "; " << mesh_motion->current_time()
+                        << " s" << std::endl;
+          tg.execute();
+          print_memory_diag(bulk);
+      }
+  }
 
   stk::parallel_machine_barrier(bulk.parallel());
   tg.check_soln_norm();
 
-  write_mesh(inpfile, meta, bulk, stkio, 0.0);
+  write_mesh(inpfile, meta, bulk, stkio,
+             mesh_motion->current_time());
 
   bool dump_partitions = false;
   if (inpfile["dump_tioga_partitions"])

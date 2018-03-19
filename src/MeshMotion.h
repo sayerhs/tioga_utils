@@ -30,6 +30,8 @@ public:
 
     int num_steps() { return numSteps_; }
 
+    double current_time() { return currentTime_; }
+
 private:
     MeshMotion() = delete;
     MeshMotion(const MeshMotion&) = delete;
@@ -46,6 +48,7 @@ private:
 
     double startTime_{0.0};
     double deltaT_{0.0};
+    double currentTime_{0.0};
 
     int numSteps_{0};
 };
