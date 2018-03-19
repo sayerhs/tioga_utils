@@ -474,13 +474,13 @@ TiogaSTKIface::populate_overset_info()
     }
     const double nearestDistance = meSCS->isInElement(
       elemxyz.data(), info.nodalCoords_.data(), info.isoCoords_.data());
-#if 1
+#if 0
     if (nearestDistance > (1.0 + 1.0e-8)) {
-        std::cerr
-            << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
-            << "iso-parametric distance is greater than 1.0: " << nearestDistance
-            << "; num nodes on element = " << bulk_.num_nodes(elem)
-            << std::endl;
+        // std::cerr
+        //     << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
+        //     << "iso-parametric distance is greater than 1.0: " << nearestDistance
+        //     << "; num nodes on element = " << bulk_.num_nodes(elem)
+        //     << std::endl;
 
         if (!outfile.is_open()) {
             std::string fname = "fringe_mismatch." + std::to_string(nproc)
