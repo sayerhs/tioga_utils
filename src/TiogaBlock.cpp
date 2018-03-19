@@ -372,6 +372,11 @@ void TiogaBlock::register_block(tioga& tg)
   // Do nothing if this mesh block isn't present in this MPI Rank
   if (num_nodes_ < 1) return;
 
+  for (int i=0; i < iblank_.size(); i++)
+      iblank_[i] = 1;
+  for (int i=0; i < iblank_cell_.size(); i++)
+      iblank_cell_[i] = 1;
+
   // Register the mesh block information to TIOGA
   tg.registerGridData(
     meshtag_,           // Unique body tag
