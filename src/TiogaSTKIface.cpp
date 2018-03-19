@@ -125,7 +125,7 @@ void TiogaSTKIface::execute()
   // step.
   update_ghosting();
 
-  populate_inactive_part();
+  // populate_inactive_part();
 
   // Update overset fringe connectivity information for Constraint based algorithm
   // update_fringe_info();
@@ -150,6 +150,7 @@ void TiogaSTKIface::reset_data_structures()
   bulk_.modification_end();
 
   holeElems_.clear();
+  receptorIDs_.clear();
 }
 
 void TiogaSTKIface::update_ghosting()
