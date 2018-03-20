@@ -151,6 +151,7 @@ void TiogaSTKIface::reset_data_structures()
 
   holeElems_.clear();
   receptorIDs_.clear();
+  donorIDs_.clear();
 }
 
 void TiogaSTKIface::update_ghosting()
