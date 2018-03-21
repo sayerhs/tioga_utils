@@ -166,20 +166,13 @@ void TiogaSTKIface::update_ghosting()
     bulk_.modification_end();
   }
 
-  // std::cout << bulk_.parallel_rank() << "\t" << g_ghostCount << "\t" << nGhostLocal << std::endl;
-  // stk::mesh::Part& cpart = bulk_.ghosting_part(*ovsetGhosting_);
-  // stk::mesh::Selector sel = cpart;
-  // const stk::mesh::BucketVector& cgbkts = bulk_.get_buckets(stk::topology::ELEM_RANK, sel);
-  // size_t num_elems = 0;
-  // for (size_t i=0; i<cgbkts.size(); i++) {
-  //   num_elems += cgbkts[i]->size();
-  // }
-  // std::cout << bulk_.parallel_rank() << "\t" << num_elems << std::endl;
-
+  if (bulk_.parallel_rank() == 0)
+      std::cout << "Total number of ghosted elements = " << g_ghostCount << std::endl;
 }
 
 void TiogaSTKIface::populate_inactive_part()
 {
+  auto timeMon = get_timer("TiogaSTKIface::populate_inactive_part");
   stk::mesh::PartVector toParts;
   toParts.push_back(inactivePart_);
 
