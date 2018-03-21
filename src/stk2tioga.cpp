@@ -254,6 +254,7 @@ int main(int argc, char** argv)
       if (iproc == 0)
           std::cout << "Performing initial overset connectivity... " << std::endl;
       tg.execute();
+      tg.check_soln_norm();
       print_memory_diag(bulk);
 
       if (has_motion) {
@@ -273,7 +274,6 @@ int main(int argc, char** argv)
       }
 
       stk::parallel_machine_barrier(bulk.parallel());
-      tg.check_soln_norm();
 
       {
           auto timeMon3 = tioga_nalu::get_timer("stk2tioga::write_mesh");
