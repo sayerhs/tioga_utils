@@ -49,6 +49,25 @@ void print_memory_diag(const stk::mesh::BulkData& bulk)
                   << 1.0 * curr_max / factor << std::endl;
 }
 
+void print_hwm_memory_diag(const stk::mesh::BulkData& bulk)
+{
+    std::ios::fmtflags cflags(std::cout.flags());
+    const double factor = 1024.0 * 1024;
+    size_t curr_max, curr_min, curr_avg;
+    stk::get_memory_high_water_mark_across_processors(
+        bulk.parallel(), curr_max, curr_min, curr_avg);
+
+    if (bulk.parallel_rank() == 0)
+      std::cout << "Memory high-water mark: Avg. = " << std::setw(6)
+                << std::fixed << std::setprecision(4) << curr_avg / factor
+                << " MB; Min. = " << std::setw(6) << std::fixed
+                << std::setprecision(4) << curr_min / factor
+                << " MB; Max. = " << std::setw(6) << std::fixed
+                << std::setprecision(4) << curr_max / factor << " MB"
+                << std::endl;
+    std::cout.flags(cflags);
+}
+
 void tag_procs(stk::mesh::MetaData& meta, stk::mesh::BulkData& bulk)
 {
   int iproc = bulk.parallel_rank();
@@ -272,6 +291,7 @@ int main(int argc, char** argv)
           tg.tioga_iface().writeData(0, 0);
       }
       stk::parallel_machine_barrier(bulk.parallel());
+      print_hwm_memory_diag(bulk);
   }
   Teuchos::TimeMonitor::summarize(
       std::cout, false, true, false, Teuchos::Union);
