@@ -256,9 +256,14 @@ int main(int argc, char** argv)
       tg.execute();
       tg.check_soln_norm();
       print_memory_diag(bulk);
+      if (iproc == 0)
+          std::cout << "Completed initial overset connectivity" << std::endl;
 
       if (has_motion) {
           int nsteps = mesh_motion->num_steps();
+          if (iproc == 0)
+              std::cout << "Execution mesh motion for num steps = "
+                        << nsteps << std::endl << std::endl;
 
           for (int nt =0; nt < nsteps; nt++) {
               mesh_motion->execute(nt);
@@ -277,8 +282,8 @@ int main(int argc, char** argv)
 
       {
           auto timeMon3 = tioga_nalu::get_timer("stk2tioga::write_mesh");
-          write_mesh(inpfile, meta, bulk, stkio,
-                     mesh_motion->current_time());
+          double curr_time = has_motion ? mesh_motion->current_time() : 0.0;
+          write_mesh(inpfile, meta, bulk, stkio, curr_time);
       }
 
       bool dump_partitions = false;
