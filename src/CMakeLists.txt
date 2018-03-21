@@ -38,6 +38,7 @@ add_executable(stk2tioga
   MotionBase.cpp
   MeshRotation.cpp
   MeshMotion.cpp
+  Timer.cpp
 
   stk2tioga.cpp)
 target_link_libraries(stk2tioga

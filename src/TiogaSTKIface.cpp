@@ -1,5 +1,6 @@
 
 #include "TiogaSTKIface.h"
+#include "Timer.h"
 #include "NaluEnv.h"
 
 #include "master_element/MasterElement.h"
@@ -51,6 +52,8 @@ TiogaSTKIface::load(const YAML::Node& node)
 
 void TiogaSTKIface::setup()
 {
+  auto timeMon = get_timer("TiogaSTKIface::setup");
+
   for (auto& tb: blocks_) {
     tb->setup();
   }
@@ -65,6 +68,7 @@ void TiogaSTKIface::initialize()
                        bulk_.parallel_rank(),
                        bulk_.parallel_size());
 
+  auto timeMon = get_timer("TiogaSTKIface::initialize");
   for (auto& tb: blocks_) {
     tb->initialize();
   }
@@ -74,6 +78,7 @@ void TiogaSTKIface::initialize_ghosting()
 {
   // TODO: Update ghosting modification to use optimized version in
   // Non-conformal case.
+  auto timeMon = get_timer("TiogaSTKIface::initialize_ghosting");
   bulk_.modification_begin();
   if (ovsetGhosting_ == nullptr) {
     const std::string ghostName = "nalu_overset_ghosting";
@@ -97,8 +102,14 @@ void TiogaSTKIface::execute()
   }
 
   // Determine overset connectivity
-  tg_->profile();
-  tg_->performConnectivity();
+  {
+      auto timeMon = get_timer("TIOGA::profile");
+      tg_->profile();
+  }
+  {
+      auto timeMon = get_timer("TIOGA::performConnectivity");
+      tg_->performConnectivity();
+  }
 
   for (auto& tb: blocks_) {
     // Update IBLANK information at nodes and elements
@@ -134,6 +145,7 @@ void TiogaSTKIface::execute()
 
 void TiogaSTKIface::reset_data_structures()
 {
+  auto timeMon = get_timer("TiogaSTKIface::reset_data_structures");
   elemsToGhost_.clear();
   ovsetInfo_.clear();
 
@@ -156,6 +168,7 @@ void TiogaSTKIface::reset_data_structures()
 
 void TiogaSTKIface::update_ghosting()
 {
+  auto timeMon = get_timer("TiogaSTKIface::update_ghosting");
   uint64_t g_ghostCount = 0;
   uint64_t nGhostLocal = elemsToGhost_.size();
   stk::all_reduce_sum(bulk_.parallel(), &nGhostLocal, &g_ghostCount, 1);
@@ -286,6 +299,7 @@ void TiogaSTKIface::update_fringe_info()
 
 void TiogaSTKIface::check_soln_norm()
 {
+  auto timeMon = get_timer("TiogaSTKIface::check_soln_norm");
   stk::parallel_machine_barrier(bulk_.parallel());
   // if (bulk_.parallel_rank() == 0) {
   //   std::cout << "\n\n-- Interpolation error statistics --\n"
@@ -295,7 +309,10 @@ void TiogaSTKIface::check_soln_norm()
     tb->register_solution(*tg_);
   }
 
-  tg_->dataUpdate(1, 0);
+  {
+      auto timeMon = get_timer("TIOGA::dataUpdate");
+      tg_->dataUpdate(1, 0);
+  }
 
   int nblocks = blocks_.size();
   double maxNorm = -1.0e16;
@@ -317,13 +334,17 @@ TiogaSTKIface::get_receptor_info()
 {
   ScalarFieldType* ibf = meta_.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "iblank");
+  auto timeMon = get_timer("TiogaSTKIface::get_receptor_info");
 
   std::vector<unsigned long> nodesToReset;
 
   // Ask TIOGA for the fringe points and their corresponding donor element
   // information
   std::vector<int> receptors;
-  tg_->getReceptorInfo(receptors);
+  {
+      auto timeMon1 = get_timer("TIOGA::getReceptorInfo");
+      tg_->getReceptorInfo(receptors);
+  }
 
   // Process TIOGA receptors array and fill in the oversetInfoVec used for
   // subsequent Nalu computations.
@@ -423,6 +444,7 @@ TiogaSTKIface::populate_overset_info()
   int nproc = bulk_.parallel_size();
   double maxError = -1.0e16;
   std::ofstream outfile;
+  auto timeMon = get_timer("TiogaSTKIface::populate_overset_info");
 
   std::vector<double> elemCoords;
 
@@ -471,11 +493,11 @@ TiogaSTKIface::populate_overset_info()
       elemxyz.data(), info.nodalCoords_.data(), info.isoCoords_.data());
 #if 0
     if (nearestDistance > (1.0 + 1.0e-8)) {
-        // std::cerr
-        //     << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
-        //     << "iso-parametric distance is greater than 1.0: " << nearestDistance
-        //     << "; num nodes on element = " << bulk_.num_nodes(elem)
-        //     << std::endl;
+        std::cerr
+            << "TIOGA WARNING: In pair (" << nodeID << ", " << donorID << "): "
+            << "iso-parametric distance is greater than 1.0: " << nearestDistance
+            << "; num nodes on element = " << bulk_.num_nodes(elem)
+            << std::endl;
 
         if (!outfile.is_open()) {
             std::string fname = "fringe_mismatch." + std::to_string(nproc)
@@ -506,7 +528,7 @@ TiogaSTKIface::populate_overset_info()
     if (std::fabs(error) > maxError) maxError = error;
   }
 
-#if 0
+#if 1
   stk::parallel_machine_barrier(bulk_.parallel());
   double g_maxError = -1.0e16;
   stk::all_reduce_max(bulk_.parallel(), &maxError, &g_maxError, 1);

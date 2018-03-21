@@ -1,5 +1,6 @@
 
 #include "TiogaBlock.h"
+#include "Timer.h"
 
 #include <numeric>
 #include <iostream>
@@ -46,6 +47,7 @@ void TiogaBlock::load(const YAML::Node& node)
 
 void TiogaBlock::setup()
 {
+  auto timeMon = get_timer("TiogaBlock::setup");
   names_to_parts(blkNames_, blkParts_);
 
   if (wallNames_.size() > 0)
@@ -68,6 +70,7 @@ void TiogaBlock::setup()
 
 void TiogaBlock::initialize()
 {
+  auto timeMon = get_timer("TiogaBlock::initialize");
   process_nodes();
   process_wallbc();
   process_ovsetbc();
@@ -78,6 +81,7 @@ void TiogaBlock::initialize()
 
 void TiogaBlock::update_coords()
 {
+  auto timeMon = get_timer("TiogaBlock::update_coords");
   stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
@@ -112,6 +116,7 @@ TiogaBlock::update_iblanks()
 {
   ScalarFieldType* ibf =
     meta_.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "iblank");
+  auto timeMon = get_timer("TiogaBlock::update_iblanks");
 
   stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
   const stk::mesh::BucketVector& mbkts =
@@ -132,6 +137,7 @@ void TiogaBlock::update_iblank_cell()
 {
   ScalarFieldType* ibf = meta_.get_field<ScalarFieldType>(
     stk::topology::ELEM_RANK, "iblank_cell");
+  auto timeMon = get_timer("TiogaBlock::update_iblank_cell");
 
   stk::mesh::Selector mesh_selector = meta_.locally_owned_part() &
     stk::mesh::selectUnion(blkParts_);
@@ -151,11 +157,15 @@ void TiogaBlock::get_donor_info(tioga& tg, stk::mesh::EntityProcVec& egvec)
 {
   // Nothing to do if we haven't registered this mesh on this proc
   if (num_nodes_ < 1) return;
+  auto timeMon = get_timer("TiogaBlock::get_donor_info");
 
   int dcount, fcount;
 
   // Call TIOGA API to determine donor info array sizes
-  tg.getDonorCount(meshtag_, &dcount, &fcount);
+  {
+      auto timeMon1 = get_timer("TIOGA::getDonorCount");
+      tg.getDonorCount(meshtag_, &dcount, &fcount);
+  }
 
   // Receptor info: rProcID, rNodeID, blkID, nFractions
   std::vector<int> receptorInfo(dcount*4);
@@ -165,8 +175,11 @@ void TiogaBlock::get_donor_info(tioga& tg, stk::mesh::EntityProcVec& egvec)
   std::vector<double> frac(fcount);
 
   // Populate the donor information arrays through TIOGA API call
-  tg.getDonorInfo(meshtag_,receptorInfo.data(),inode.data(),
-                  frac.data(),&dcount);
+  {
+      auto timeMon1 = get_timer("TIOGA::getDonorInfo");
+      tg.getDonorInfo(meshtag_,receptorInfo.data(),inode.data(),
+                      frac.data(),&dcount);
+  }
 
   int myRank = bulk_.parallel_rank();
   int idx = 0;
@@ -371,6 +384,7 @@ void TiogaBlock::register_block(tioga& tg)
 {
   // Do nothing if this mesh block isn't present in this MPI Rank
   if (num_nodes_ < 1) return;
+  auto timeMon = get_timer("TiogaBlock::register_block");
 
   for (int i=0; i < iblank_.size(); i++)
       iblank_[i] = 1;
@@ -401,6 +415,7 @@ void TiogaBlock::register_block(tioga& tg)
 void TiogaBlock::register_solution(tioga& tg)
 {
   if (num_nodes_ < 1) return;
+  auto timeMon = get_timer("TiogaBlock::register_solution");
 
   qsol_.resize(num_nodes_);
 
@@ -417,6 +432,7 @@ double TiogaBlock::calculate_residuals()
 
   // Skip block if this is not shared by the proc
   if (num_nodes_ < 1) return rnorm;
+  auto timeMon = get_timer("TiogaBlock::calculate_residuals");
 
   for (int i=0, ii=0; i < num_nodes_; i++, ii+=3) {
     double diff = qsol_[i] - (xyz_[ii] + xyz_[ii+1] + xyz_[ii+2]);
