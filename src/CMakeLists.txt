@@ -9,13 +9,13 @@ set(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 set(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
 find_package(Trilinos REQUIRED)
 
-find_library(YAML_LIBRARIES NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib)
+find_library(YAML_LIBRARIES NAMES yaml-cpp libyaml-cpp.a PATHS ${YAML_DIR}/lib)
 find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp)
 
 set(CMAKE_PREFIX_PATH ${TIOGA_DIR} ${CMAKE_PREFIX_PATH})
 find_package(TIOGA REQUIRED)
 
-find_library(NALU_LIBRARIES NAMES libnalu.a PATHS ${NALU_DIR}/build)
+find_library(NALU_LIBRARIES NAMES libnalu.a PATHS ${NALU_DIR}/lib ${NALU_DIR}/build)
 find_path(NALU_INCLUDES Realm.h PATHS ${NALU_DIR}/include)
 
 set(CMAKE_CXX_STANDARD 11)
