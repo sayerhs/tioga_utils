@@ -236,8 +236,8 @@ int main(int argc, char** argv)
           (stk::topology::NODE_RANK, "pid_node");
       ScalarFieldType& ipelem = meta.declare_field<ScalarFieldType>
           (stk::topology::ELEM_RANK, "pid_elem");
-      stk::mesh::put_field(ipnode, meta.universal_part());
-      stk::mesh::put_field(ipelem, meta.universal_part());
+      stk::mesh::put_field_on_mesh(ipnode, meta.universal_part(), nullptr);
+      stk::mesh::put_field_on_mesh(ipelem, meta.universal_part(), nullptr);
 
       if (iproc == 0)
           std::cout << "Loading mesh... " << std::endl;

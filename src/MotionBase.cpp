@@ -24,9 +24,9 @@ void MotionBase::setup()
         stk::topology::NODE_RANK, "mesh_displacement");
 
     for (auto* p: partVec_) {
-        stk::mesh::put_field(coordinates, *p);
-        stk::mesh::put_field(current_coordinates, *p);
-        stk::mesh::put_field(mesh_displacement, *p);
+        stk::mesh::put_field_on_mesh(coordinates, *p, nullptr);
+        stk::mesh::put_field_on_mesh(current_coordinates, *p, nullptr);
+        stk::mesh::put_field_on_mesh(mesh_displacement, *p, nullptr);
     }
 }
 

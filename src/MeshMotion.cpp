@@ -52,9 +52,9 @@ void MeshMotion::setup()
     VectorFieldType& mesh_displacement = meta_.declare_field<VectorFieldType>(
         stk::topology::NODE_RANK, "mesh_displacement");
 
-    stk::mesh::put_field(coordinates, meta_.universal_part());
-    stk::mesh::put_field(current_coordinates, meta_.universal_part());
-    stk::mesh::put_field(mesh_displacement, meta_.universal_part());
+    stk::mesh::put_field_on_mesh(coordinates, meta_.universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(current_coordinates, meta_.universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(mesh_displacement, meta_.universal_part(), nullptr);
 
     for (auto& mm: meshMotionVec_)
         mm->setup();

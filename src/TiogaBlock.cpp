@@ -63,8 +63,8 @@ void TiogaBlock::setup()
     stk::topology::ELEM_RANK, "iblank_cell");
 
   for (auto p: blkParts_) {
-    stk::mesh::put_field(ibf, *p);
-    stk::mesh::put_field(ibcell, *p);
+    stk::mesh::put_field_on_mesh(ibf, *p, nullptr);
+    stk::mesh::put_field_on_mesh(ibcell, *p, nullptr);
   }
 }
 
