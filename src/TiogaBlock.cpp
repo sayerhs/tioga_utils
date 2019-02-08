@@ -153,7 +153,7 @@ void TiogaBlock::update_iblank_cell()
   }
 }
 
-void TiogaBlock::get_donor_info(tioga& tg, stk::mesh::EntityProcVec& egvec)
+void TiogaBlock::get_donor_info(TIOGA::tioga& tg, stk::mesh::EntityProcVec& egvec)
 {
   // Nothing to do if we haven't registered this mesh on this proc
   if (num_nodes_ < 1) return;
@@ -380,7 +380,7 @@ void TiogaBlock::process_elements()
   }
 }
 
-void TiogaBlock::register_block(tioga& tg)
+void TiogaBlock::register_block(TIOGA::tioga& tg)
 {
   // Do nothing if this mesh block isn't present in this MPI Rank
   if (num_nodes_ < 1) return;
@@ -412,7 +412,7 @@ void TiogaBlock::register_block(tioga& tg)
   //tg.setResolutions(meshtag_, node_res_.data(), cell_res_.data());
 }
 
-void TiogaBlock::register_solution(tioga& tg)
+void TiogaBlock::register_solution(TIOGA::tioga& tg)
 {
   if (num_nodes_ < 1) return;
   auto timeMon = get_timer("TiogaBlock::register_solution");

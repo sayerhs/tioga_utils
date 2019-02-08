@@ -12,7 +12,9 @@
 #include <vector>
 #include <memory>
 
-class tioga;
+namespace TIOGA {
+    class tioga;
+}
 
 namespace tioga_nalu {
 
@@ -67,7 +69,7 @@ public:
 
   /** Register this block with TIOGA 
    */
-  void register_block(tioga&);
+  void register_block(TIOGA::tioga&);
 
   /** Update iblanks after connectivity updates
    */
@@ -85,9 +87,9 @@ public:
    *  @param tg Reference to TIOGA API object
    *  @param egvec List of {donorElement, receptorMPIRank} pairs to be populated
    */
-  void get_donor_info(tioga&, stk::mesh::EntityProcVec&);
+  void get_donor_info(TIOGA::tioga&, stk::mesh::EntityProcVec&);
 
-  void register_solution(tioga&);
+  void register_solution(TIOGA::tioga&);
 
   double calculate_residuals();
 

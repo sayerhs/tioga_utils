@@ -25,7 +25,7 @@ TiogaSTKIface::TiogaSTKIface(
   const std::string& coordsName
 ) : meta_(meta),
     bulk_(bulk),
-    tg_(new tioga()),
+    tg_(new TIOGA::tioga()),
     ovsetGhosting_(nullptr),
     inactivePartName_("nalu_overset_hole_elements"),
     coordsName_(coordsName)

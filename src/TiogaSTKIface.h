@@ -15,7 +15,9 @@
 #include <memory>
 #include <array>
 
-class tioga;
+namespace TIOGA {
+    class tioga;
+}
 
 namespace tioga_nalu {
 
@@ -75,7 +77,7 @@ public:
   void check_soln_norm();
 
   /** Return the TIOGA interface object */
-  tioga& tioga_iface()
+  TIOGA::tioga& tioga_iface()
   { return *tg_; }
 
 private:
@@ -125,7 +127,7 @@ private:
   std::vector<std::unique_ptr<TiogaBlock>> blocks_;
 
   //! Reference to the TIOGA API interface
-  std::unique_ptr<tioga> tg_;
+  std::unique_ptr<TIOGA::tioga> tg_;
 
   //! Pointer to STK Custom Ghosting object
   stk::mesh::Ghosting* ovsetGhosting_;
