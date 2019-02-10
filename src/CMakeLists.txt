@@ -31,6 +31,11 @@ include_directories(${CMAKE_SOURCE_DIR})
 set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS}")
 
+# Fix flags for Intel C++ compiler
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -restrict ")
+endif()
+
 add_executable(stk2tioga
   TiogaBlock.cpp
   TiogaSTKIface.cpp
