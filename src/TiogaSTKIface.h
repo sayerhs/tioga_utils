@@ -104,10 +104,6 @@ private:
    */
   void update_fringe_info();
 
-  /** Update the inactive part with hole elements
-   */
-  void populate_inactive_part();
-
   /** Reset all connectivity data structures when recomputing connectivity
    */
   void reset_data_structures();
@@ -139,26 +135,21 @@ private:
   //! Fringe {receptor, donor} information
   std::vector<std::unique_ptr<OversetInfo>> ovsetInfo_;
 
-  //! Name of part holding hole elements
-  std::string inactivePartName_;
+  //! List of receptor nodes that are shared entities across MPI ranks. This
+  //! information is used to synchronize the field vs. fringe point status for
+  //! these shared nodes across processor boundaries.
+  std::vector<stk::mesh::EntityId> receptorIDs_;
 
-  //! STK Part holding hole elements from overset connectivity
-  stk::mesh::Part* inactivePart_;
+  //! Donor elements corresponding to TiogaSTKIface::receptorIDs_ that must be
+  //! ghosted to another MPI rank to ensure that owned and shared nodes are
+  //! consistent.
+  std::vector<stk::mesh::EntityId> donorIDs_;
 
-  //! List of hole elements
-  std::vector<stk::mesh::Entity> holeElems_;
-
-    //! List of receptor nodes that are shared entities across MPI ranks. This
-    //! information is used to synchronize the field vs. fringe point status for
-    //! these shared nodes across processor boundaries.
-    std::vector<stk::mesh::EntityId> receptorIDs_;
-
-    //! Donor elements corresponding to TiogaSTKIface::receptorIDs_ that must be
-    //! ghosted to another MPI rank to ensure that owned and shared nodes are
-    //! consistent.
-    std::vector<stk::mesh::EntityId> donorIDs_;
-
-    std::string coordsName_;
+  //! Name of the coordinate field sent to TIOGA for OGA
+  //!
+  //! For static meshes this is coordinates, for moving meshes this is
+  //! "current_coordinates". Initialized when this instance is constructed.
+  std::string coordsName_;
 };
 
 

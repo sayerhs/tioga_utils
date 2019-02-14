@@ -27,7 +27,6 @@ TiogaSTKIface::TiogaSTKIface(
     bulk_(bulk),
     tg_(new TIOGA::tioga()),
     ovsetGhosting_(nullptr),
-    inactivePartName_("nalu_overset_hole_elements"),
     coordsName_(coordsName)
 {
   load(node);
@@ -57,9 +56,6 @@ void TiogaSTKIface::setup()
   for (auto& tb: blocks_) {
     tb->setup();
   }
-
-  // Initialize the inactive part
-  inactivePart_ = &meta_.declare_part(inactivePartName_, stk::topology::ELEM_RANK);
 }
 
 void TiogaSTKIface::initialize()
@@ -129,14 +125,10 @@ void TiogaSTKIface::execute()
 
   get_receptor_info();
 
-  // TODO: Combine bulk modification for ghosting and inactive part population
-
   // Collect all elements to be ghosted and update ghosting so that the elements
   // are available when generating {fringeNode, donorElement} pairs in the next
   // step.
   update_ghosting();
-
-  // populate_inactive_part();
 
   // Update overset fringe connectivity information for Constraint based algorithm
   // update_fringe_info();
@@ -149,19 +141,6 @@ void TiogaSTKIface::reset_data_structures()
   elemsToGhost_.clear();
   ovsetInfo_.clear();
 
-  // Reset inactivePart_
-  bulk_.modification_begin();
-  {
-    stk::mesh::PartVector add_parts;
-    stk::mesh::PartVector remove_parts;
-    remove_parts.push_back(inactivePart_);
-    for (auto elem : holeElems_) {
-      bulk_.change_entity_parts(elem, add_parts, remove_parts);
-    }
-  }
-  bulk_.modification_end();
-
-  holeElems_.clear();
   receptorIDs_.clear();
   donorIDs_.clear();
 }
@@ -181,33 +160,6 @@ void TiogaSTKIface::update_ghosting()
 
   if (bulk_.parallel_rank() == 0)
       std::cout << "Total number of ghosted elements = " << g_ghostCount << std::endl;
-}
-
-void TiogaSTKIface::populate_inactive_part()
-{
-  auto timeMon = get_timer("TiogaSTKIface::populate_inactive_part");
-  stk::mesh::PartVector toParts;
-  toParts.push_back(inactivePart_);
-
-  bulk_.modification_begin();
-  {
-    for (auto& tb: blocks_) {
-      auto iblank_cell = tb->iblank_cell();
-      auto elem_gid = tb->elem_id_map();
-
-      for (auto ib: iblank_cell) {
-        if (ib != 0) continue;
-
-        stk::mesh::Entity elem = bulk_.get_entity(
-          stk::topology::ELEM_RANK, elem_gid[ib]);
-        bulk_.change_entity_parts(elem, toParts);
-        holeElems_.push_back(elem);
-      }
-    }
-  }
-  bulk_.modification_end();
-  // std::cout << bulk_.parallel_rank() << "\t" << holeElems_.size() << "\t"
-  //           << oldSize << std::endl;
 }
 
 void TiogaSTKIface::update_fringe_info()
