@@ -82,7 +82,8 @@ void TiogaBlock::initialize()
 void TiogaBlock::update_coords()
 {
   auto timeMon = get_timer("TiogaBlock::update_coords");
-  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
+  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_)
+      & (meta_.locally_owned_part() | meta_.globally_shared_part());
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
   VectorFieldType* coords = meta_.get_field<VectorFieldType>(
@@ -118,7 +119,8 @@ TiogaBlock::update_iblanks()
     meta_.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "iblank");
   auto timeMon = get_timer("TiogaBlock::update_iblanks");
 
-  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
+  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_)
+      & (meta_.locally_owned_part() | meta_.globally_shared_part());
   const stk::mesh::BucketVector& mbkts =
     bulk_.get_buckets(stk::topology::NODE_RANK, mesh_selector);
 
@@ -218,7 +220,8 @@ inline void TiogaBlock::names_to_parts(
 
 void TiogaBlock::process_nodes()
 {
-  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
+  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_)
+      & (meta_.locally_owned_part() | meta_.globally_shared_part());
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
   VectorFieldType* coords = meta_.get_field<VectorFieldType>(
@@ -257,7 +260,8 @@ void TiogaBlock::process_nodes()
 
 void TiogaBlock::process_wallbc()
 {
-  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(wallParts_);
+  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(wallParts_)
+      & (meta_.locally_owned_part() | meta_.globally_shared_part());
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
 
@@ -281,7 +285,8 @@ void TiogaBlock::process_wallbc()
 
 void TiogaBlock::process_ovsetbc()
 {
-  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(ovsetParts_);
+  stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(ovsetParts_)
+      & (meta_.locally_owned_part() | meta_.globally_shared_part());
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
 

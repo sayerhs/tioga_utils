@@ -89,27 +89,27 @@ private:
    */
   void load(const YAML::Node&);
 
-  /** STK Custom Ghosting to transfer donor elements to receptor's MPI rank
-   *
-   *  This method declares the STK custom ghosting object, actual updates are
-   *  performed by the update_ghosting method.
-   */
-  void initialize_ghosting();
-
   /** Ghost donor elements to receptor MPI ranks
    */
   void update_ghosting();
-
-  /** Populate the {fringe node, donor element} pair data structure
-   */
-  void update_fringe_info();
 
   /** Reset all connectivity data structures when recomputing connectivity
    */
   void reset_data_structures();
 
+  /** Determine (receptor, donor) pairs on the MPI rank containing receptors.
+   *
+   *  Populates the list of donor elements for each receptor on this MPI rank.
+   *  Creation of the actual data structures is done in populate_overset_info.
+   *  The method is also responsible for determining fringe/field mismatches for
+   *  the shared nodes across processor interfaces. The logic used is to signal
+   *  all procs sharing the node to take on a fringe status (iblank = -1) if one
+   *  of them has status of fringe while others have a status of field point.
+   */
   void get_receptor_info();
 
+  /** Populate the datastructures used to perform overset connectivity in Nalu
+   */
   void populate_overset_info();
 
   //! Reference to the STK MetaData object
@@ -144,6 +144,9 @@ private:
   //! ghosted to another MPI rank to ensure that owned and shared nodes are
   //! consistent.
   std::vector<stk::mesh::EntityId> donorIDs_;
+
+  //! Ghosting exchange information
+  std::vector<int> ghostCommProcs_;
 
   //! Name of the coordinate field sent to TIOGA for OGA
   //!
