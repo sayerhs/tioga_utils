@@ -3,6 +3,7 @@
 #include "Timer.h"
 #include "NaluEnv.h"
 
+#include "master_element/MasterElementFactory.h"
 #include "master_element/MasterElement.h"
 #include "master_element/Hex8CVFEM.h"
 #include "utils/StkHelpers.h"
