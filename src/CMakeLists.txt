@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 2.8.11)
 
 project(TIOGA_UTILS CXX Fortran)
 
+option(ENABLE_NALU_WIND "Enable interface to nalu-wind" OFF)
+
 find_package(MPI REQUIRED)
 
 set(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
@@ -15,8 +17,10 @@ find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp)
 set(CMAKE_PREFIX_PATH ${TIOGA_DIR} ${CMAKE_PREFIX_PATH})
 find_package(TIOGA REQUIRED)
 
-find_library(NALU_LIBRARIES NAMES nalu libnalu.a PATHS ${NALU_DIR}/lib ${NALU_DIR}/build)
-find_path(NALU_INCLUDES Realm.h PATHS ${NALU_DIR}/include)
+if (ENABLE_NALU_WIND)
+  find_library(NALU_LIBRARIES NAMES nalu libnalu.a PATHS ${NALU_DIR}/lib ${NALU_DIR}/build)
+  find_path(NALU_INCLUDES Realm.h PATHS ${NALU_DIR}/include)
+endif()
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,7 +29,10 @@ include_directories(SYSTEM ${Trilinos_INCLUDE_DIRS})
 include_directories(SYSTEM ${Trilinos_TPL_INCLUDE_DIRS})
 include_directories(SYSTEM ${YAML_INCLUDES}/..)
 include_directories(${TIOGA_INCLUDE_DIRS})
-include_directories(${NALU_DIR}/include)
+if (ENABLE_NALU_WIND)
+  include_directories(${NALU_INCLUDES})
+  add_definitions(-DHAS_NALU_WIND)
+endif()
 include_directories(${CMAKE_SOURCE_DIR})
 
 set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
@@ -47,7 +54,10 @@ add_executable(stk2tioga
 
   stk2tioga.cpp)
 target_link_libraries(stk2tioga
-  ${NALU_LIBRARIES}
   ${Trilinos_LIBRARIES}
   ${YAML_LIBRARIES}
   ${TIOGA_LIBRARIES})
+
+if (ENABLE_NALU_WIND)
+  target_link_libraries(stk2tioga ${NALU_LIBRARIES})
+endif()
