@@ -1,0 +1,3 @@
+[submodule "ext/amrex"]
+	path = ext/amrex
+	url = git@github.com:AMReX-Codes/amrex.git
