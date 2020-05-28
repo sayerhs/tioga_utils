@@ -24,6 +24,7 @@ if (ENABLE_NALU_WIND)
 endif()
 
 target_sources(tioga_stk PRIVATE
+  TiogaRef.cpp
   TiogaBlock.cpp
   TiogaSTKIface.cpp
 

@@ -1,5 +1,6 @@
 
 #include "TiogaSTKIface.h"
+#include "TiogaRef.h"
 #include "Timer.h"
 
 #ifdef HAS_NALU_WIND
@@ -31,7 +32,7 @@ TiogaSTKIface::TiogaSTKIface(
   const std::string& coordsName
 ) : meta_(meta),
     bulk_(bulk),
-    tg_(new TIOGA::tioga()),
+    tg_(TiogaRef::self().get()),
     ovsetGhosting_(nullptr),
     coordsName_(coordsName)
 {
@@ -66,7 +67,7 @@ void TiogaSTKIface::setup()
 
 void TiogaSTKIface::initialize()
 {
-  tg_->setCommunicator(bulk_.parallel(),
+  tg_.setCommunicator(bulk_.parallel(),
                        bulk_.parallel_rank(),
                        bulk_.parallel_size());
 
@@ -83,17 +84,17 @@ void TiogaSTKIface::execute()
   // Update the coordinates for TIOGA and register updates to the TIOGA mesh block.
   for (auto& tb: blocks_) {
     tb->update_coords();
-    tb->register_block(*tg_);
+    tb->register_block(tg_);
   }
 
   // Determine overset connectivity
   {
       auto timeMon = get_timer("TIOGA::profile");
-      tg_->profile();
+      tg_.profile();
   }
   {
       auto timeMon = get_timer("TIOGA::performConnectivity");
-      tg_->performConnectivity();
+      tg_.performConnectivity();
   }
 
   for (auto& tb: blocks_) {
@@ -103,7 +104,7 @@ void TiogaSTKIface::execute()
 
     // For each block determine donor elements that needs to be ghosted to other
     // MPI ranks
-    tb->get_donor_info(*tg_, elemsToGhost_);
+    tb->get_donor_info(tg_, elemsToGhost_);
   }
 
   // Synchronize IBLANK data for shared nodes
@@ -174,12 +175,12 @@ void TiogaSTKIface::check_soln_norm()
   //             << "Proc ID.    BodyTag    Error(L2 norm)" << std::endl;
   // }
   for (auto& tb: blocks_) {
-    tb->register_solution(*tg_);
+    tb->register_solution(tg_);
   }
 
   {
       auto timeMon = get_timer("TIOGA::dataUpdate");
-      tg_->dataUpdate(1, 0);
+      tg_.dataUpdate(1, 0);
   }
 
   int nblocks = blocks_.size();
@@ -211,7 +212,7 @@ TiogaSTKIface::get_receptor_info()
   std::vector<int> receptors;
   {
       auto timeMon1 = get_timer("TIOGA::getReceptorInfo");
-      tg_->getReceptorInfo(receptors);
+      tg_.getReceptorInfo(receptors);
   }
 
   // Process TIOGA receptors array and fill in the oversetInfoVec used for

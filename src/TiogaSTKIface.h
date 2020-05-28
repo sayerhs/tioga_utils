@@ -78,7 +78,7 @@ public:
 
   /** Return the TIOGA interface object */
   TIOGA::tioga& tioga_iface()
-  { return *tg_; }
+  { return tg_; }
 
 private:
   TiogaSTKIface() = delete;
@@ -123,7 +123,7 @@ private:
   std::vector<std::unique_ptr<TiogaBlock>> blocks_;
 
   //! Reference to the TIOGA API interface
-  std::unique_ptr<TIOGA::tioga> tg_;
+  TIOGA::tioga& tg_;
 
   //! Pointer to STK Custom Ghosting object
   stk::mesh::Ghosting* ovsetGhosting_;
