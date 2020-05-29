@@ -14,15 +14,15 @@ namespace tioga_amr {
 class TiogaAMRIface
 {
 public:
-    TiogaAMRIface(const YAML::Node&);
+    TiogaAMRIface();
 
     ~TiogaAMRIface();
+
+    void load(const YAML::Node&);
 
     void initialize();
 
 private:
-    void load(const YAML::Node&);
-
     std::unique_ptr<StructMesh> m_mesh;
 };
 

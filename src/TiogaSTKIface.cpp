@@ -67,9 +67,9 @@ void TiogaSTKIface::setup()
 
 void TiogaSTKIface::initialize()
 {
-  tg_.setCommunicator(bulk_.parallel(),
-                       bulk_.parallel_rank(),
-                       bulk_.parallel_size());
+  // tg_.setCommunicator(bulk_.parallel(),
+  //                      bulk_.parallel_rank(),
+  //                      bulk_.parallel_size());
 
   auto timeMon = get_timer("TiogaSTKIface::initialize");
   for (auto& tb: blocks_) {
@@ -113,6 +113,7 @@ void TiogaSTKIface::execute()
   std::vector<const stk::mesh::FieldBase*> pvec{ibf};
   stk::mesh::copy_owned_to_shared(bulk_, pvec);
 
+#ifdef HAS_NALU_WIND
   get_receptor_info();
 
   // Collect all elements to be ghosted and update ghosting so that the elements
@@ -123,6 +124,7 @@ void TiogaSTKIface::execute()
   // Update overset fringe connectivity information for Constraint based algorithm
   // update_fringe_info();
   populate_overset_info();
+#endif
 }
 
 void TiogaSTKIface::reset_data_structures()

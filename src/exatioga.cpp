@@ -1,76 +1,35 @@
-#include <iostream>
-#include <fstream>
-
+#include "ExaTioga.h"
+#include "TiogaRef.h"
 #include "amrex_yaml.h"
-#include "TiogaAMRIface.h"
 
-#include "stk_util/parallel/Parallel.hpp"
-#include "stk_util/environment/OptionsSpecification.hpp"
-#include "stk_util/environment/ParseCommandLineArgs.hpp"
+#include "tioga.h"
 
-#include "AMReX.H"
+namespace tioga_amr {
 
-bool parse_cmdline(
-    int& argc, char** argv,
-    stk::ParsedOptions& options, std::string& inpfile)
+ExaTioga::ExaTioga(stk::ParallelMachine& comm)
+    : m_comm(comm)
+    , m_stk(comm)
+    , m_amr()
+    , m_tioga(tioga_nalu::TiogaRef::self().get())
 {
-    stk::OptionsSpecification opts("TIOGA utils options");
-    opts.add_options()
-        ("help,h", "Print help message and exit")
-        ("input-file,i", "YAML input file",
-         stk::DefaultValue<std::string>("exatioga.yaml"),
-         stk::TargetPointer<std::string>(&inpfile));
-
-    stk::parse_command_line_args(argc, const_cast<const char**>(argv), opts, options);
-
-    if (options.count("help")) {
-        if (!stk::parallel_machine_rank(MPI_COMM_WORLD))
-            std::cout << opts << std::endl;
-        return true;
-    }
-
-    return false;
+    const int iproc = stk::parallel_machine_rank(comm);
+    const int nproc = stk::parallel_machine_size(comm);
+    m_tioga.setCommunicator(comm, iproc, nproc);
 }
 
-int main(int argc, char** argv)
+void ExaTioga::init_amr(const YAML::Node& node)
 {
-    stk::ParallelMachine comm = stk::parallel_machine_init(&argc, &argv);
-    Kokkos::initialize(argc, argv);
-    std::string input_file;
-    stk::ParsedOptions options;
+    m_amr.load(node["amr_wind"]);
+    m_amr.initialize();
+}
 
-    const bool do_exit = parse_cmdline(argc, argv, options, input_file);
-    if (do_exit) {
-        Kokkos::finalize();
-        stk::parallel_machine_finalize();
-        return 0;
-    }
+void ExaTioga::init_stk(const YAML::Node& node)
+{
+    m_stk.load_and_initialize_all(node["nalu_wind"]);
+}
 
-    std::ifstream fin(input_file.c_str());
-    if (!fin.good()) {
-        if (!stk::parallel_machine_rank(comm))
-            std::cerr << "Cannot find input file: " << input_file << std::endl;
-        return 1;
-    }
-    const YAML::Node doc = YAML::LoadFile(input_file);
+void ExaTioga::execute()
+{
+}
 
-    {
-        int targc = 0;
-        char** targv = nullptr;
-        amrex::Initialize(targc, targv, true, comm, [&]() {
-            if (doc["amrex"]) {
-                tioga_amr::populate_parameters(doc, "amrex");
-            }
-        });
-    }
-
-    {
-        tioga_amr::TiogaAMRIface tg_amr(doc["amr_wind"]);
-
-        tg_amr.initialize();
-    }
-
-    amrex::Finalize();
-    Kokkos::finalize();
-    stk::parallel_machine_finalize();
 }

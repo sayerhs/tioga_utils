@@ -226,6 +226,7 @@ int main(int argc, char** argv)
 
       const YAML::Node& oset_info = inpfile["overset_info"];
       tioga_nalu::TiogaSTKIface tg(meta, bulk, oset_info, coords_name);
+      tg.tioga_iface().setCommunicator(comm, iproc, nproc);
 
       if (iproc == 0)
           std::cout << "Calling TIOGA setup... " << std::endl;

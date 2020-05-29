@@ -1,4 +1,5 @@
 #include "FieldRepo.h"
+#include "Timer.h"
 
 namespace tioga_amr {
 
@@ -116,7 +117,7 @@ void FieldRepo::make_new_level_from_scratch(
     const amrex::BoxArray& ba,
     const amrex::DistributionMapping& dm)
 {
-    BL_PROFILE("amr-wind::FieldRepo::make_new_level_from_scratch")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::make_new_level_from_scratch");
     m_leveldata[lev].reset(new LevelDataHolder());
 
     allocate_field_data(ba, dm, *m_leveldata[lev], *(m_leveldata[lev]->m_factory));
@@ -130,7 +131,7 @@ void FieldRepo::make_new_level_from_coarse(
     const amrex::BoxArray& ba,
     const amrex::DistributionMapping& dm)
 {
-    BL_PROFILE("amr-wind::FieldRepo::make_level_from_coarse")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::make_level_from_coarse");
     std::unique_ptr<LevelDataHolder> ldata(new LevelDataHolder());
 
     allocate_field_data(ba, dm, *ldata, *(ldata->m_factory));
@@ -145,7 +146,7 @@ void FieldRepo::remake_level(
     const amrex::BoxArray& ba,
     const amrex::DistributionMapping& dm)
 {
-    BL_PROFILE("amr-wind::FieldRepo::remake_level")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::remake_level");
     std::unique_ptr<LevelDataHolder> ldata(new LevelDataHolder());
 
     allocate_field_data(ba, dm, *ldata, *(ldata->m_factory));
@@ -157,7 +158,7 @@ void FieldRepo::remake_level(
 
 void FieldRepo::clear_level(int lev)
 {
-    BL_PROFILE("amr-wind::FieldRepo::clear_level")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::clear_level");
     m_leveldata[lev].reset();
 }
 
@@ -167,7 +168,7 @@ Field& FieldRepo::declare_field(
     const int ngrow,
     const FieldLoc floc)
 {
-    BL_PROFILE("amr-wind::FieldRepo::declare_field")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::declare_field");
     // If the field is already registered check and return the fields
     {
         auto found = m_fid_map.find(name);
@@ -205,7 +206,7 @@ IntField& FieldRepo::declare_int_field(
     const int ngrow,
     const FieldLoc floc)
 {
-    BL_PROFILE("amr-wind::FieldRepo::declare_int_field")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::declare_int_field");
 
     // If the field is already registered check and return the fields
     {
@@ -240,7 +241,7 @@ IntField& FieldRepo::declare_int_field(
 
 Field& FieldRepo::get_field(const std::string& name) const
 {
-    BL_PROFILE("amr-wind::FieldRepo::get_field")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::get_field");
     const auto found = m_fid_map.find(name);
     if (found == m_fid_map.end()) {
         amrex::Abort("Cannot find field: " + name);
@@ -258,7 +259,7 @@ bool FieldRepo::field_exists(const std::string& name) const
 
 IntField& FieldRepo::get_int_field(const std::string& name) const
 {
-    BL_PROFILE("amr-wind::FieldRepo::get_int_field")
+    auto tmon = tioga_nalu::get_timer("FieldRepo::get_int_field");
     const auto found = m_int_fid_map.find(name);
     if (found == m_int_fid_map.end()) {
         amrex::Abort("Cannot find field: " + name);
