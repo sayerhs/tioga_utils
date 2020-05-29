@@ -4,6 +4,8 @@ target_sources(tioga_amr PRIVATE
   FieldRepo.cpp
   StructMesh.cpp
   TiogaAMRIface.cpp
+
+  CartBoxRefinement.cpp
   )
 
 target_include_directories(tioga_amr PUBLIC

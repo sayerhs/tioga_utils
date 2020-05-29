@@ -10,6 +10,7 @@ TiogaAMRIface::TiogaAMRIface(const YAML::Node& node)
     load(node);
 
     m_mesh.reset(new StructMesh());
+    m_mesh->load(node);
 }
 
 TiogaAMRIface::~TiogaAMRIface() = default;

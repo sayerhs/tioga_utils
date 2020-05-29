@@ -2,8 +2,13 @@
 #define STRUCTMESH_H
 
 #include "FieldRepo.h"
+#include "RefinementCriteria.h"
 
 #include "AMReX_AmrCore.H"
+
+namespace YAML {
+class Node;
+}
 
 namespace tioga_amr {
 
@@ -13,6 +18,8 @@ public:
     StructMesh();
 
     virtual ~StructMesh() = default;
+
+    void load(const YAML::Node&);
 
     void initialize_mesh(const amrex::Real current_time=0.0);
 
@@ -40,6 +47,7 @@ protected:
         override;
 
     FieldRepo m_repo;
+    amrex::Vector<std::unique_ptr<RefinementCriteria>> m_refine_vec;
 };
 
 }
