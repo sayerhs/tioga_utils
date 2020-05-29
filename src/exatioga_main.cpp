@@ -74,15 +74,16 @@ int main(int argc, char** argv)
         tioga_amr::ExaTioga driver(comm);
         driver.init_amr(doc);
         driver.init_stk(doc);
-        // tioga_amr::TiogaAMRIface tg_amr(doc["amr_wind"]);
-        // tioga_nalu::StkIface tg_stk(comm);
 
-        // tg_amr.initialize();
-        // tg_stk.load_and_initialize_all(doc["nalu_wind"]);
+        driver.execute();
     }
 
-    Teuchos::TimeMonitor::summarize(
-        std::cout, false, true, false, Teuchos::Union);
+    bool dump_timers = true;
+    if (doc["dump_timers"]) dump_timers = doc["dump_timers"].as<bool>();
+    if (dump_timers)
+        Teuchos::TimeMonitor::summarize(
+            std::cout, false, true, false, Teuchos::Union);
+
     amrex::Finalize();
     Kokkos::finalize();
     stk::parallel_machine_finalize();

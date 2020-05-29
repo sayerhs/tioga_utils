@@ -1,6 +1,7 @@
 #include "ExaTioga.h"
 #include "TiogaRef.h"
 #include "amrex_yaml.h"
+#include "Timer.h"
 
 #include "tioga.h"
 
@@ -30,6 +31,31 @@ void ExaTioga::init_stk(const YAML::Node& node)
 
 void ExaTioga::execute()
 {
+    amrex::Print() << "Register STK mesh" << std::endl;
+    m_stk.register_mesh();
+    amrex::Print() << "Register AMR mesh" << std::endl;
+    m_amr.register_mesh(m_tioga);
+    stk::parallel_machine_barrier(m_comm);
+
+    {
+        auto tmon = tioga_nalu::get_timer("tioga::profile");
+        amrex::Print() << "TIOGA profile" << std::endl;
+        m_tioga.profile();
+        stk::parallel_machine_barrier(m_comm);
+    }
+    {
+        auto tmon = tioga_nalu::get_timer("tioga::performConnectivity");
+        amrex::Print() << "TIOGA unstructured connectivity" << std::endl;
+        m_tioga.performConnectivity();
+        stk::parallel_machine_barrier(m_comm);
+    }
+    {
+        auto tmon = tioga_nalu::get_timer("tioga::performConnectivityAMR");
+        amrex::Print() << "TIOGA AMR connectivity" << std::endl;
+        m_tioga.performConnectivityAMR();
+        stk::parallel_machine_barrier(m_comm);
+    }
+    amrex::Print() << "Domain connectivity completed successfully" << std::endl;
 }
 
 }
