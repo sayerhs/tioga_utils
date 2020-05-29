@@ -36,3 +36,10 @@ target_sources(tioga_stk PRIVATE
 
 target_sources(stk2tioga PRIVATE stk2tioga.cpp)
 target_link_libraries(stk2tioga PUBLIC tioga_stk)
+
+if (ENABLE_AMR_WIND)
+  add_subdirectory(amr)
+
+  target_sources(exatioga PRIVATE exatioga.cpp)
+  target_link_libraries(exatioga PUBLIC tioga_stk tioga_amr)
+endif()
