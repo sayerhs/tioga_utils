@@ -30,6 +30,11 @@ public:
 
     void load_and_initialize_all(const YAML::Node&);
 
+    void register_mesh()
+    {
+        tg_->register_mesh();
+    }
+
     std::string coordinates_name() const
     {
         return (has_motion_? "current_coordinates" : "coordinates");

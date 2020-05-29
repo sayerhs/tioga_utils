@@ -76,6 +76,10 @@ public:
    */
   void check_soln_norm();
 
+  /** Register mesh to TIOGA
+   */
+  void register_mesh();
+
   /** Return the TIOGA interface object */
   TIOGA::tioga& tioga_iface()
   { return tg_; }

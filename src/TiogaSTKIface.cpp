@@ -424,4 +424,15 @@ TiogaSTKIface::populate_overset_info()
 #endif
 }
 
+void TiogaSTKIface::register_mesh()
+{
+    reset_data_structures();
+
+    // Update the coordinates for TIOGA and register updates to the TIOGA mesh block.
+    for (auto& tb: blocks_) {
+        tb->update_coords();
+        tb->register_block(tg_);
+    }
+}
+
 }  // tioga
