@@ -30,6 +30,8 @@ public:
 
     void load_and_initialize_all(const YAML::Node&);
 
+    void write_outputs(const YAML::Node&, const double time = 0.0);
+
     void register_mesh()
     {
         tg_->register_mesh();

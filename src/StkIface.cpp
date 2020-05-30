@@ -84,4 +84,33 @@ void StkIface::load_and_initialize_all(const YAML::Node& node)
     initialize();
 }
 
+void StkIface::write_outputs(const YAML::Node& node, const double time)
+{
+    bool has_motion = false;
+    if (node["motion_info"])
+        has_motion = true;
+
+    ScalarFieldType* ibf = meta_.get_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "iblank");
+    ScalarFieldType* ibcell = meta_.get_field<ScalarFieldType>(
+        stk::topology::ELEM_RANK, "iblank_cell");
+
+    std::string out_mesh = node["output_mesh"].as<std::string>();
+    if (bulk_.parallel_rank() == 0)
+        std::cout << "Writing STK output file: " << out_mesh << std::endl;
+    size_t fh = stkio_.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
+    stkio_.add_field(fh, *ibf);
+    stkio_.add_field(fh, *ibcell);
+
+    if (has_motion) {
+        VectorFieldType* mesh_disp = meta_.get_field<VectorFieldType>(
+            stk::topology::NODE_RANK, "mesh_displacement");
+        stkio_.add_field(fh, *mesh_disp);
+    }
+
+    stkio_.begin_output_step(fh, time);
+    stkio_.write_defined_output_fields(fh);
+    stkio_.end_output_step(fh);
+}
+
 } // namespace tioga_nalu
