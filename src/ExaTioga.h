@@ -25,6 +25,8 @@ public:
 
     void execute();
 
+    void perform_connectivity();
+
 private:
     stk::ParallelMachine m_comm;
 

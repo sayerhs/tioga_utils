@@ -1,11 +1,33 @@
+#include <iostream>
+
 #include "ExaTioga.h"
 #include "TiogaRef.h"
 #include "amrex_yaml.h"
 #include "Timer.h"
 
+#include "stk_util/environment/WallTime.hpp"
+#include "stk_util/environment/perf_util.hpp"
+
 #include "tioga.h"
 
 namespace tioga_amr {
+
+namespace {
+void print_memory_diag(const stk::ParallelMachine& comm)
+{
+    const double factor = 1024.0;
+    size_t curr_max, curr_min, curr_avg;
+    stk::get_current_memory_usage_across_processors(
+        comm, curr_max, curr_min, curr_avg);
+
+    const int iproc = stk::parallel_machine_rank(comm);
+    if (iproc == 0)
+        std::cout << "Memory usage (KB): Avg. = " << (1.0 * curr_avg) / factor
+                  << "; Min. = " << (1.0 * curr_min) / factor
+                  << "; Max. = " << (1.0 * curr_max) / factor << std::endl;
+}
+
+} // namespace
 
 ExaTioga::ExaTioga(stk::ParallelMachine& comm)
     : m_comm(comm)
@@ -31,6 +53,12 @@ void ExaTioga::init_stk(const YAML::Node& node)
 }
 
 void ExaTioga::execute()
+{
+    perform_connectivity();
+    print_memory_diag(m_comm);
+}
+
+void ExaTioga::perform_connectivity()
 {
     amrex::Print() << "Register STK mesh" << std::endl;
     m_stk.register_mesh();
