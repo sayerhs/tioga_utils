@@ -19,6 +19,13 @@ void TiogaAMRIface::load(const YAML::Node& node)
     populate_parameters(node, "amr");
     populate_parameters(node, "geometry");
 
+    if (node["field"]) {
+        const auto& fnode = node["field"];
+        get_optional(fnode, "num_ghost", m_num_ghost);
+        get_optional(fnode, "num_cell_vars", m_ncell_vars);
+        get_optional(fnode, "num_node_vars", m_nnode_vars);
+    }
+
     m_mesh.reset(new StructMesh());
     m_mesh->load(node);
 }
@@ -30,8 +37,15 @@ void TiogaAMRIface::initialize()
     m_mesh->initialize_mesh();
 
     auto& repo = m_mesh->repo();
-    repo.declare_int_field("iblank_cell", 1, num_ghost);
-    repo.declare_int_field("iblank", 1, num_ghost, FieldLoc::NODE);
+    repo.declare_int_field("iblank_cell", 1, m_num_ghost);
+    repo.declare_int_field("iblank", 1, m_num_ghost, FieldLoc::NODE);
+
+    if (m_ncell_vars > 0) {
+        m_qcell = &repo.declare_field("qcell", m_ncell_vars, m_num_ghost);
+    }
+    if (m_nnode_vars > 0) {
+        m_qnode = &repo.declare_field("qnode", m_nnode_vars, m_num_ghost);
+    }
 }
 
 void TiogaAMRIface::register_mesh(TIOGA::tioga& tg)
@@ -100,7 +114,7 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg)
     }
 
     tg.register_amr_global_data(
-        num_ghost, gint_data.data(), greal_data.data(), ngrids_global);
+        m_num_ghost, gint_data.data(), greal_data.data(), ngrids_global);
     tg.set_amr_patch_count(ngrids_local);
 
     // Register local patches

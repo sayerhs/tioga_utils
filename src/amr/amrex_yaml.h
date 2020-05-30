@@ -32,6 +32,13 @@ void populate_parameters(
     const std::string& prefix,
     const bool required = true);
 
+template <typename T>
+inline void
+get_optional(const YAML::Node& node, const std::string& key, T& value)
+{
+    if (node[key]) value = node[key].as<T>();
 }
+
+} // namespace tioga_amr
 
 #endif /* AMREX_YAML_H */
