@@ -177,7 +177,7 @@ void TiogaSTKIface::check_soln_norm()
   //             << "Proc ID.    BodyTag    Error(L2 norm)" << std::endl;
   // }
   for (auto& tb: blocks_) {
-    tb->register_solution(tg_);
+    tb->register_solution_old(tg_);
   }
 
   {
@@ -190,7 +190,7 @@ void TiogaSTKIface::check_soln_norm()
   double g_maxNorm = -1.0e16;
   for (int i=0; i<nblocks; i++) {
     auto& tb = blocks_[i];
-    double rnorm = tb->calculate_residuals();
+    double rnorm = tb->calculate_residuals_old();
     maxNorm = std::max(rnorm, maxNorm);
   }
 

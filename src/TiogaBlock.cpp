@@ -418,7 +418,7 @@ void TiogaBlock::register_block(TIOGA::tioga& tg)
   //tg.setResolutions(meshtag_, node_res_.data(), cell_res_.data());
 }
 
-void TiogaBlock::register_solution(TIOGA::tioga& tg)
+void TiogaBlock::register_solution_old(TIOGA::tioga& tg)
 {
   if (num_nodes_ < 1) return;
   auto timeMon = get_timer("TiogaBlock::register_solution");
@@ -432,7 +432,7 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg)
   tg.registerSolution(meshtag_, qsol_.data());
 }
 
-double TiogaBlock::calculate_residuals()
+double TiogaBlock::calculate_residuals_old()
 {
   double rnorm = 0.0;
 

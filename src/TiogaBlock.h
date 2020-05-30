@@ -89,9 +89,9 @@ public:
    */
   void get_donor_info(TIOGA::tioga&, stk::mesh::EntityProcVec&);
 
-  void register_solution(TIOGA::tioga&);
+  void register_solution_old(TIOGA::tioga&);
 
-  double calculate_residuals();
+  double calculate_residuals_old();
 
   // Accessors
 
