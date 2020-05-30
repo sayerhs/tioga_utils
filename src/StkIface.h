@@ -47,6 +47,9 @@ public:
         return (has_motion_? "current_coordinates" : "coordinates");
     }
 
+    int& num_vars() { return num_vars_; }
+    const int& num_vars() const { return num_vars_; }
+
 private:
     stk::ParallelMachine comm_;
     stk::mesh::MetaData meta_;
@@ -55,6 +58,8 @@ private:
 
     std::unique_ptr<TiogaSTKIface> tg_;
     std::unique_ptr<MeshMotion> motion_;
+
+    int num_vars_{0};
 
     bool has_motion_{false};
 };

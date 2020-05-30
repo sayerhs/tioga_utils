@@ -42,9 +42,11 @@ void TiogaAMRIface::initialize()
 
     if (m_ncell_vars > 0) {
         m_qcell = &repo.declare_field("qcell", m_ncell_vars, m_num_ghost);
+        amrex::Print() << "Number of cell variables: " << m_ncell_vars;
     }
     if (m_nnode_vars > 0) {
         m_qnode = &repo.declare_field("qnode", m_nnode_vars, m_num_ghost);
+        amrex::Print() << "Number of nodal variables: " << m_nnode_vars;
     }
 }
 

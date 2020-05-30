@@ -28,6 +28,12 @@ public:
 
     void register_mesh(TIOGA::tioga&);
 
+    int num_total_vars() const { return m_ncell_vars + m_nnode_vars; }
+
+    int num_cell_vars() const { return m_ncell_vars; }
+
+    int num_node_vars() const { return m_nnode_vars; }
+
 private:
     std::unique_ptr<StructMesh> m_mesh;
 

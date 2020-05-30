@@ -1,4 +1,5 @@
 #include "StkIface.h"
+#include "TiogaBlock.h"
 #include "Timer.h"
 
 namespace tioga_nalu {
@@ -54,6 +55,11 @@ void StkIface::setup()
     if (has_motion_)
         motion_->setup();
     tg_->setup();
+
+    if (num_vars_ > 0) {
+        auto& qvar = meta_.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "qvars");
+        stk::mesh::put_field_on_mesh(qvar, meta_.universal_part(), num_vars_, nullptr);
+    }
 }
 
 void StkIface::initialize()

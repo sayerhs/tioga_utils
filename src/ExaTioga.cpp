@@ -26,6 +26,7 @@ void ExaTioga::init_amr(const YAML::Node& node)
 
 void ExaTioga::init_stk(const YAML::Node& node)
 {
+    m_stk.num_vars() = m_amr.num_total_vars();
     m_stk.load_and_initialize_all(node["nalu_wind"]);
 }
 

@@ -20,6 +20,7 @@ namespace tioga_nalu {
 
 typedef stk::mesh::Field<double, stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double> ScalarFieldType;
+typedef stk::mesh::Field<double, stk::mesh::SimpleArrayTag>  GenericFieldType;
 
 /**
  * Interface to convert STK Mesh Part(s) to TIOGA blocks.
