@@ -35,6 +35,11 @@ public:
         tg_->register_mesh();
     }
 
+    void post_connectivity_work()
+    {
+        tg_->post_connectivity_work();
+    }
+
     std::string coordinates_name() const
     {
         return (has_motion_? "current_coordinates" : "coordinates");

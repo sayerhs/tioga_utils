@@ -435,4 +435,19 @@ void TiogaSTKIface::register_mesh()
     }
 }
 
+void TiogaSTKIface::post_connectivity_work()
+{
+    for (auto& tb : blocks_) {
+        // Update IBLANK information at nodes and elements
+        tb->update_iblanks();
+        tb->update_iblank_cell();
+    }
+
+    // Synchronize IBLANK data for shared nodes
+    ScalarFieldType* ibf =
+        meta_.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "iblank");
+    std::vector<const stk::mesh::FieldBase*> pvec{ibf};
+    stk::mesh::copy_owned_to_shared(bulk_, pvec);
+}
+
 }  // tioga

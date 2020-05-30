@@ -80,6 +80,10 @@ public:
    */
   void register_mesh();
 
+  /** Perform post-connectivity updates
+   */
+  void post_connectivity_work();
+
   /** Return the TIOGA interface object */
   TIOGA::tioga& tioga_iface()
   { return tg_; }

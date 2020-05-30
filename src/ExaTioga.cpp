@@ -55,6 +55,8 @@ void ExaTioga::execute()
         m_tioga.performConnectivityAMR();
         stk::parallel_machine_barrier(m_comm);
     }
+
+    m_stk.post_connectivity_work();
     amrex::Print() << "Domain connectivity completed successfully" << std::endl;
 }
 
