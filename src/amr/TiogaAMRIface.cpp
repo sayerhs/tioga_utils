@@ -3,6 +3,8 @@
 #include "amrex_yaml.h"
 
 #include "AMReX_ParmParse.H"
+#include "AMReX_MultiFabUtil.H"
+#include "AMReX_PlotFileUtil.H"
 
 #include "tioga.h"
 
@@ -134,6 +136,32 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg)
             tg.register_amr_local_data(ilp++, idmap[ii++], ib.dataPtr());
         }
     }
+}
+
+void TiogaAMRIface::write_outputs(const int time_index, const double time)
+{
+    // Total variables = cell + node + iblank_cell + iblank_node
+    const int num_out_vars = num_total_vars() + 1;
+    auto& repo = m_mesh->repo();
+    auto& qout = m_mesh->repo().declare_field("qout", num_out_vars, 0);
+    auto& ibcell = repo.get_int_field("iblank_cell");
+    amrex::Vector<std::string> vnames{"iblank_cell"};
+
+    const int nlevels = m_mesh->finestLevel() + 1;
+    for (int lev=0; lev < nlevels; ++lev) {
+        auto& qfab = qout(lev);
+        {
+            auto& ibc = ibcell(lev);
+            amrex::MultiFab::Copy(qfab, amrex::ToMultiFab(ibc), 0, 0, 1, 0);
+        }
+    }
+
+    amrex::Vector<int> istep(m_mesh->finestLevel() + 1, time_index);
+    const std::string& plt_filename = amrex::Concatenate("plt", time_index);
+    amrex::Print() << "Writing plot file: " << plt_filename << std::endl;
+    amrex::WriteMultiLevelPlotfile(
+        plt_filename, nlevels, qout.vec_const_ptrs(), vnames,
+        m_mesh->Geom(), time, istep, m_mesh->refRatio());
 }
 
 } // namespace tioga_amr

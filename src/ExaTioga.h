@@ -23,7 +23,7 @@ public:
 
     void init_stk(const YAML::Node&);
 
-    void execute();
+    void execute(const YAML::Node&);
 
     void perform_connectivity();
 

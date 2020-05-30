@@ -47,6 +47,8 @@ public:
         return (has_motion_? "current_coordinates" : "coordinates");
     }
 
+    bool has_motion() const { return has_motion_; }
+
     int& num_vars() { return num_vars_; }
     const int& num_vars() const { return num_vars_; }
 

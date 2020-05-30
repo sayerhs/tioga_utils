@@ -75,7 +75,7 @@ int main(int argc, char** argv)
         driver.init_amr(doc);
         driver.init_stk(doc);
 
-        driver.execute();
+        driver.execute(doc);
     }
 
     bool dump_timers = true;
