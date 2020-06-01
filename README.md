@@ -1,33 +1,38 @@
+# ExaWind TIOGA utilities
 
-# TIOGA + Trilinos STK Utilities
+This repository contains utilities to demonstrate overset connectivity within
+the [ExaWind](https://github.com/exawind) project using
+[TIOGA](https://github.com/jsitaraman/tioga) between unstructured meshes in
+Exodus-II format using [STK](https://github.com/trilinos/Trilinos) and
+block-structured meshes using [AMReX](https://github.com/AMReX-Codes/amrex)
 
-Contains test code to demonstrate [TIOGA](https://github.com/jsitaraman/tioga/)
-to [STK](https://github.com/trilinos/Trilinos) integration.
+The code generates two executables:
+
+- `stk2tioga` -- Standalone utility to test overset connectivity between
+  unstructured meshes that are all in one Exodus file.
+  
+- `exatioga` -- Utility to test overset connectivity between multiple
+  unstructured meshes (provided in Exodus-II format) with a single AMR
+  background mesh with multiple levels of refinement.
 
 ## Building from source
 
 The following dependencies must be available on your system:
 
-- [Trilinos](https://github.com/trilinos/Trilinos)
 - [TIOGA](https://github.com/jsitaraman/tioga)
-- [Nalu](https://github.com/NaluCFD/Nalu)
+- [Trilinos](https://github.com/trilinos/Trilinos)
+- [AMReX](https://github.com/AMReX-Codes/amrex)
 
+```console
+# Clone the git repository
+git clone --recurse-submodules -b exawind git@github.com:sayerhs/tioga_utils.git
 
-See [`share/cmake_configure.sh`](https://github.com/sayerhs/tioga_utils/blob/master/share/cmake-configure.sh) for an example CMake configuration script. 
-
-```
-git clone https://github.com/sayerhs/tioga_utils.git
-cd tioga_utils
-mkdir build
-cd build
-cp ../share/cmake_configure.sh 
-# EDIT script as necessary
-./cmake_configure.sh 
-make 
+# In an already cloned repository
+git fetch origin
+git checkout --track origin/exawind
+git submodule update --init --recursive
 ```
 
-## Usage
-
-```
-mpiexec -np <NPROCS> stk2tioga <input_file>
-```
+We recommend using
+[exawind-builder](https://exawind-builder.readthedocs.io/en/latest/) to
+configure and build the dependencies as well as `tioga-utils`.
