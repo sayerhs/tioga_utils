@@ -49,10 +49,17 @@ public:
 
     bool has_motion() const { return has_motion_; }
 
-    int& num_vars() { return num_vars_; }
-    const int& num_vars() const { return num_vars_; }
+    int& num_cell_vars() { return ncell_vars_; }
+    const int& num_cell_vars() const { return ncell_vars_; }
+
+    int& num_node_vars() { return nnode_vars_; }
+    const int& num_node_vars() const { return nnode_vars_; }
+
+    const int num_vars() const { return ncell_vars_ + nnode_vars_; }
 
 private:
+    void init_vars();
+
     stk::ParallelMachine comm_;
     stk::mesh::MetaData meta_;
     stk::mesh::BulkData bulk_;
@@ -61,7 +68,8 @@ private:
     std::unique_ptr<TiogaSTKIface> tg_;
     std::unique_ptr<MeshMotion> motion_;
 
-    int num_vars_{0};
+    int ncell_vars_{0};
+    int nnode_vars_{0};
 
     bool has_motion_{false};
 };

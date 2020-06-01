@@ -76,11 +76,13 @@ void TiogaAMRIface::initialize()
 
     if (m_ncell_vars > 0) {
         m_qcell = &repo.declare_field("qcell", m_ncell_vars, m_num_ghost);
-        amrex::Print() << "Number of cell variables: " << m_ncell_vars;
+        amrex::Print() << "Number of cell variables: " << m_ncell_vars << std::endl;
+        init_var(*m_qcell, m_ncell_vars, 0.5);
     }
     if (m_nnode_vars > 0) {
         m_qnode = &repo.declare_field("qnode", m_nnode_vars, m_num_ghost);
-        amrex::Print() << "Number of nodal variables: " << m_nnode_vars;
+        amrex::Print() << "Number of nodal variables: " << m_nnode_vars << std::endl;
+        init_var(*m_qnode, m_nnode_vars, 0.0);
     }
 }
 
@@ -182,6 +184,12 @@ void TiogaAMRIface::write_outputs(const int time_index, const double time)
     auto& qout = m_mesh->repo().declare_field("qout", num_out_vars, 0);
     auto& ibcell = repo.get_int_field("iblank_cell");
     amrex::Vector<std::string> vnames{"iblank_cell"};
+    for (int n=0; n < m_ncell_vars; ++n) {
+        vnames.push_back("qcell" + std::to_string(n));
+    }
+    for (int n=0; n < m_nnode_vars; ++n) {
+        vnames.push_back("qnode" + std::to_string(n));
+    }
 
     const int nlevels = m_mesh->finestLevel() + 1;
     for (int lev=0; lev < nlevels; ++lev) {
@@ -189,6 +197,18 @@ void TiogaAMRIface::write_outputs(const int time_index, const double time)
         {
             auto& ibc = ibcell(lev);
             amrex::MultiFab::Copy(qfab, amrex::ToMultiFab(ibc), 0, 0, 1, 0);
+        }
+
+        int icomp = 1;
+        if (m_ncell_vars > 0) {
+            auto& qvars = repo.get_field("qcell")(lev);
+            amrex::MultiFab::Copy(qfab, qvars, 0, icomp, m_ncell_vars, 0);
+            icomp += m_ncell_vars;
+        }
+
+        if (m_nnode_vars > 0) {
+            auto& qvars = repo.get_field("qnode")(lev);
+            amrex::average_node_to_cellcenter(qfab, icomp, qvars, 0, m_nnode_vars, 0);
         }
     }
 
@@ -198,6 +218,49 @@ void TiogaAMRIface::write_outputs(const int time_index, const double time)
     amrex::WriteMultiLevelPlotfile(
         plt_filename, nlevels, qout.vec_const_ptrs(), vnames,
         m_mesh->Geom(), time, istep, m_mesh->refRatio());
+}
+
+void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real offset)
+{
+    auto& repo = m_mesh->repo();
+    const int nlevels = repo.num_active_levels();
+
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const auto& geom = m_mesh->Geom(lev);
+        const auto* problo = geom.ProbLo();
+        const auto* dx = geom.CellSize();
+        auto& qfab = qcell(lev);
+
+        for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
+            const auto bx = mfi.growntilebox(m_num_ghost);
+            const auto qarr = qfab.array(mfi);
+
+            amrex::ParallelFor(bx, [&](int i, int j, int k) noexcept {
+                const amrex::Real x = problo[0] + (i + offset) * dx[0];
+                const amrex::Real y = problo[1] + (i + offset) * dx[1];
+                const amrex::Real z = problo[2] + (i + offset) * dx[2];
+
+                switch (nvars) {
+                case 1:
+                    qarr(i, j, k, 0) = x + y + z;
+                    break;
+
+                case 3:
+                    qarr(i, j, k, 0) = x + y + z;
+                    qarr(i, j, k, 1) = x * x + y * y + z * z;
+                    qarr(i, j, k, 2) = x * y * z;
+                    break;
+
+                default:
+                    for (int n = 0; n < nvars; ++n) {
+                        const int np1 = n + 1;
+                        qarr(i, j, k, n) = np1 * x + 2.0 * np1 * y +  3.0 * np1 * z;
+                    }
+                    break;
+                }
+            });
+        }
+    }
 }
 
 } // namespace tioga_amr

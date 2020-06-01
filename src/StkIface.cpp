@@ -56,9 +56,9 @@ void StkIface::setup()
         motion_->setup();
     tg_->setup();
 
-    if (num_vars_ > 0) {
+    if (num_vars() > 0) {
         auto& qvar = meta_.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "qvars");
-        stk::mesh::put_field_on_mesh(qvar, meta_.universal_part(), num_vars_, nullptr);
+        stk::mesh::put_field_on_mesh(qvar, meta_.universal_part(), num_vars(), nullptr);
     }
 }
 
@@ -71,6 +71,8 @@ void StkIface::initialize()
     if (has_motion_)
         motion_->initialize();
     tg_->initialize();
+
+    if (num_vars() > 0) init_vars();
 }
 
 void StkIface::populate_bulk_data()
@@ -114,9 +116,75 @@ void StkIface::write_outputs(const YAML::Node& node, const double time)
         stkio_.add_field(fh, *mesh_disp);
     }
 
+    if (num_vars() > 0) {
+        auto* qvars = meta_.get_field<GenericFieldType>(
+            stk::topology::NODE_RANK, "qvars");
+        stkio_.add_field(fh, *qvars);
+    }
+
     stkio_.begin_output_step(fh, time);
     stkio_.write_defined_output_fields(fh);
     stkio_.end_output_step(fh);
+}
+
+void StkIface::init_vars()
+{
+    auto* coords = meta_.get_field<VectorFieldType>(
+        stk::topology::NODE_RANK, coordinates_name());
+    auto* qvars = meta_.get_field<GenericFieldType>(stk::topology::NODE_RANK, "qvars");
+    const stk::mesh::Selector sel = stk::mesh::selectField(*qvars);
+    const auto& bkts = bulk_.get_buckets(stk::topology::NODE_RANK, sel);
+
+    for (auto b: bkts) {
+        for (size_t in=0; in < b->size(); ++in) {
+            const auto node = (*b)[in];
+            const double* xyz = stk::mesh::field_data(*coords, node);
+            double* qq = stk::mesh::field_data(*qvars, node);
+
+            if (ncell_vars_ > 0) {
+                switch(ncell_vars_) {
+                case 1:
+                    qq[0] = xyz[0] + xyz[1] + xyz[2];
+                    break;
+
+                case 3:
+                    qq[0] = xyz[0] + xyz[1] + xyz[2];
+                    qq[1] = xyz[0] * xyz[0] + xyz[1] * xyz[1]  + xyz[2] * xyz[2] ;
+                    qq[2] = xyz[0] * xyz[1] * xyz[2];
+                    break;
+
+                default:
+                    for (int n=0; n < ncell_vars_; ++n) {
+                        const int np1 = n+1;
+                        qq[n] = np1 * xyz[0] + 2.0 * np1 * xyz[1] + 3.0 * np1 * xyz[2];
+                    }
+                    break;
+                }
+            }
+
+            if (nnode_vars_ > 0) {
+                const int ii = ncell_vars_;
+                switch(nnode_vars_) {
+                case 1:
+                    qq[ii + 0] = xyz[0] + xyz[1] + xyz[2];
+                    break;
+
+                case 3:
+                    qq[ii + 1] = xyz[0] + xyz[1] + xyz[2];
+                    qq[ii + 2] = xyz[0] * xyz[0] + xyz[1] * xyz[1]  + xyz[2] * xyz[2] ;
+                    qq[ii + 3] = xyz[0] * xyz[1] * xyz[2];
+                    break;
+
+                default:
+                    for (int n=0; n < nnode_vars_; ++n) {
+                        const int np1 = n + 1;
+                        qq[ii + n] = np1 * xyz[0] + 2.0 * np1 * xyz[1] + 3.0 * np1 * xyz[2];
+                    }
+                    break;
+                }
+            }
+        }
+    }
 }
 
 } // namespace tioga_nalu
