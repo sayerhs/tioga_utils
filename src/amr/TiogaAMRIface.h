@@ -26,7 +26,7 @@ public:
 
     void initialize();
 
-    void register_mesh(TIOGA::tioga&);
+    void register_mesh(TIOGA::tioga&, const bool verbose=false);
 
     void write_outputs(const int time_index=0, const double time=0.0);
 

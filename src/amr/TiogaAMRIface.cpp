@@ -9,6 +9,38 @@
 #include "tioga.h"
 
 namespace tioga_amr {
+namespace {
+
+void output_grid_summary(
+    int nglobal,
+    int nlocal,
+    std::vector<int>& int_data,
+    std::vector<double>& real_data)
+{
+    amrex::Print() << "AMR grid summary: "
+                   << "Num. grids = " << nglobal << std::endl;
+    for (int i = 0; i < nglobal; ++i) {
+        const int ii = i * 10;
+        const int ir = i * 6;
+
+        amrex::Print() << "AMR grid: " << i << std::endl;
+        for (int j = 0; j < 4; ++j)
+            amrex::Print() << std::setw(4) << int_data[ii + j] << " ";
+        amrex::Print() << std::endl;
+        for (int j = 4; j < 10; ++j)
+            amrex::Print() << std::setw(4) << int_data[ii + j] << " ";
+        amrex::Print() << std::endl;
+
+        for (int j = 0; j < AMREX_SPACEDIM; ++j)
+            amrex::Print() << std::setw(12) << real_data[ir + j] << " ";
+        amrex::Print() << std::endl;
+        for (int j = 0; j < AMREX_SPACEDIM; ++j)
+            amrex::Print() << std::setw(12)
+                           << real_data[ir + AMREX_SPACEDIM + j] << " ";
+        amrex::Print() << std::endl;
+    }
+}
+} // namespace
 
 TiogaAMRIface::TiogaAMRIface()
 {}
@@ -52,7 +84,7 @@ void TiogaAMRIface::initialize()
     }
 }
 
-void TiogaAMRIface::register_mesh(TIOGA::tioga& tg)
+void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
 {
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::register_mesh");
     auto& mesh = *m_mesh;
@@ -135,6 +167,10 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg)
             auto& ib = ibfab[mfi];
             tg.register_amr_local_data(ilp++, idmap[ii++], ib.dataPtr());
         }
+    }
+
+    if (verbose) {
+        output_grid_summary(ngrids_global, ngrids_local, gint_data, greal_data);
     }
 }
 
