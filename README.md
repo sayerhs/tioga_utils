@@ -19,7 +19,8 @@ The code generates two executables:
 
 The following dependencies must be available on your system:
 
-- [TIOGA](https://github.com/jsitaraman/tioga)
+- [TIOGA](https://github.com/jsitaraman/tioga) -- For use with AMR meshes, you
+  should checkout the `exawind` branch of TIOGA.
 - [Trilinos](https://github.com/trilinos/Trilinos)
 - [AMReX](https://github.com/AMReX-Codes/amrex)
 
