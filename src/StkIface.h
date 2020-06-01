@@ -42,6 +42,13 @@ public:
         tg_->post_connectivity_work();
     }
 
+    void register_solution();
+
+    void update_solution()
+    {
+        tg_->update_solution(num_vars());
+    }
+
     std::string coordinates_name() const
     {
         return (has_motion_? "current_coordinates" : "coordinates");

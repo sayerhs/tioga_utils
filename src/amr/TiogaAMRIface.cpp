@@ -76,13 +76,13 @@ void TiogaAMRIface::initialize()
 
     if (m_ncell_vars > 0) {
         m_qcell = &repo.declare_field("qcell", m_ncell_vars, m_num_ghost);
+        repo.declare_field("qcell_ref", m_ncell_vars, m_num_ghost);
         amrex::Print() << "Number of cell variables: " << m_ncell_vars << std::endl;
-        init_var(*m_qcell, m_ncell_vars, 0.5);
     }
     if (m_nnode_vars > 0) {
         m_qnode = &repo.declare_field("qnode", m_nnode_vars, m_num_ghost);
+        repo.declare_field("qnode_ref", m_nnode_vars, m_num_ghost);
         amrex::Print() << "Number of nodal variables: " << m_nnode_vars << std::endl;
-        init_var(*m_qnode, m_nnode_vars, 0.0);
     }
 }
 
@@ -176,8 +176,107 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
     }
 }
 
+void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
+{
+    if (num_total_vars() < 1) return;
+
+    init_var(*m_qcell, m_ncell_vars, 0.5);
+    init_var(*m_qnode, m_nnode_vars, 0.0);
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::register_solution");
+    const int nlevels = m_mesh->repo().num_active_levels();
+    int ilp = 0;
+
+    for (int lev=0; lev < nlevels; ++lev) {
+        if (m_ncell_vars > 0) {
+            auto& qref = m_mesh->repo().get_field("qcell_ref");
+            const bool isnodal = false;
+            auto& qfab = (*m_qcell)(lev);
+            for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
+                auto& qarr = qfab[mfi];
+                tg.register_amr_solution(ilp++, qarr.dataPtr(), isnodal);
+            }
+            auto& qref_fab = qref(lev);
+            amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
+                                  qref.num_comp(), qref.num_grow());
+        }
+        if (m_nnode_vars > 0) {
+            const bool isnodal = true;
+            auto& qfab = (*m_qnode)(lev);
+            for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
+                auto& qarr = qfab[mfi];
+                tg.register_amr_solution(ilp++, qarr.dataPtr(), isnodal);
+            }
+            auto& qref = m_mesh->repo().get_field("qnode_ref");
+            auto& qref_fab = qref(lev);
+            amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
+                                  qref.num_comp(), qref.num_grow());
+        }
+    }
+}
+
+void TiogaAMRIface::update_solution()
+{
+    if (num_total_vars() < 1) return;
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::update_solution");
+    const int nlevels = m_mesh->repo().num_active_levels();
+
+    amrex::Real rnorm = 0.0;
+    int counter = 0;
+    for (int lev=0; lev < nlevels; ++lev) {
+        if (m_ncell_vars > 0) {
+            const int ncomp = m_ncell_vars;
+            auto& qref = m_mesh->repo().get_field("qcell_ref");
+            auto& qfab = (*m_qcell)(lev);
+            auto& qref_fab = qref(lev);
+            for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
+                auto bx = mfi.tilebox();
+                counter += bx.numPts() * ncomp;
+                const auto qarr = qfab.array(mfi);
+                const auto qref_arr = qref_fab.array(mfi);
+
+                amrex::ParallelFor(bx, [&](int i, int j, int k) {
+                    for (int n = 0; n < ncomp; ++n) {
+                        amrex::Real diff =
+                            qarr(i, j, k, n) - qref_arr(i, j, k, n);
+                        rnorm += diff * diff;
+                    }
+                });
+            }
+        }
+        if (m_nnode_vars > 0) {
+            const int ncomp = m_nnode_vars;
+            auto& qref = m_mesh->repo().get_field("qnode_ref");
+            auto& qfab = (*m_qnode)(lev);
+            auto& qref_fab = qref(lev);
+            for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
+                auto bx = mfi.tilebox();
+                counter += bx.numPts() * ncomp;
+                const auto qarr = qfab.array(mfi);
+                const auto qref_arr = qref_fab.array(mfi);
+
+                amrex::ParallelFor(bx, [&](int i, int j, int k) {
+                    for (int n = 0; n < ncomp; ++n) {
+                        amrex::Real diff =
+                            qarr(i, j, k, n) - qref_arr(i, j, k, n);
+                        rnorm += diff * diff;
+                    }
+                });
+            }
+        }
+    }
+
+    rnorm /= static_cast<amrex::Real>(counter);
+    rnorm = std::sqrt(rnorm);
+    amrex::ParallelDescriptor::ReduceRealMax(
+        rnorm, amrex::ParallelDescriptor::IOProcessorNumber());
+    amrex::Print() << "TIOGA interpolation error (max L2 norm) for AMR mesh: "
+                   << rnorm << std::endl;
+}
+
 void TiogaAMRIface::write_outputs(const int time_index, const double time)
 {
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::write_outputs");
+
     // Total variables = cell + node + iblank_cell + iblank_node
     const int num_out_vars = num_total_vars() + 1;
     auto& repo = m_mesh->repo();
@@ -222,6 +321,9 @@ void TiogaAMRIface::write_outputs(const int time_index, const double time)
 
 void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real offset)
 {
+    if (nvars < 1) return;
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::init_var");
+
     auto& repo = m_mesh->repo();
     const int nlevels = repo.num_active_levels();
 
@@ -237,8 +339,8 @@ void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real of
 
             amrex::ParallelFor(bx, [&](int i, int j, int k) noexcept {
                 const amrex::Real x = problo[0] + (i + offset) * dx[0];
-                const amrex::Real y = problo[1] + (i + offset) * dx[1];
-                const amrex::Real z = problo[2] + (i + offset) * dx[2];
+                const amrex::Real y = problo[1] + (j + offset) * dx[1];
+                const amrex::Real z = problo[2] + (k + offset) * dx[2];
 
                 switch (nvars) {
                 case 1:

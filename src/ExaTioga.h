@@ -27,6 +27,10 @@ public:
 
     void perform_connectivity();
 
+    void exchange_solution();
+
+    void check_solution_norm();
+
 private:
     stk::ParallelMachine m_comm;
 

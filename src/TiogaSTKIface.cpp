@@ -426,6 +426,7 @@ TiogaSTKIface::populate_overset_info()
 
 void TiogaSTKIface::register_mesh()
 {
+    auto tmon = get_timer("TiogaSTKIface::register_mesh");
     reset_data_structures();
 
     // Update the coordinates for TIOGA and register updates to the TIOGA mesh block.
@@ -437,6 +438,7 @@ void TiogaSTKIface::register_mesh()
 
 void TiogaSTKIface::post_connectivity_work()
 {
+    auto tmon = get_timer("TiogaSTKIface::post_connectivity_work");
     for (auto& tb : blocks_) {
         // Update IBLANK information at nodes and elements
         tb->update_iblanks();
@@ -448,6 +450,30 @@ void TiogaSTKIface::post_connectivity_work()
         meta_.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "iblank");
     std::vector<const stk::mesh::FieldBase*> pvec{ibf};
     stk::mesh::copy_owned_to_shared(bulk_, pvec);
+}
+
+void TiogaSTKIface::register_solution(const int nvars)
+{
+    auto tmon = get_timer("TiogaSTKIface::register_solution");
+    for (auto& tb: blocks_)
+        tb->register_solution(tg_, nvars);
+}
+
+void TiogaSTKIface::update_solution(const int nvars)
+{
+    auto tmon = get_timer("TiogaSTKIface::update_solution");
+    double maxNorm = -1.0e20;
+    double g_maxNorm = -1.0e20;
+    for (auto& tb: blocks_)
+    {
+        double norm = tb->update_solution(nvars);
+        maxNorm = std::max(norm, maxNorm);
+    }
+
+    stk::all_reduce_max(bulk_.parallel(), &maxNorm, &g_maxNorm, 1);
+    if (bulk_.parallel_rank() == 0)
+        std::cout << "TIOGA interpolation error (max L2 norm) for STK mesh: "
+                  << g_maxNorm << std::endl;
 }
 
 }  // tioga

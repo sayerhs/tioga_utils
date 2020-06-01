@@ -28,6 +28,10 @@ public:
 
     void register_mesh(TIOGA::tioga&, const bool verbose=false);
 
+    void register_solution(TIOGA::tioga&);
+
+    void update_solution();
+
     void write_outputs(const int time_index=0, const double time=0.0);
 
     int num_total_vars() const { return m_ncell_vars + m_nnode_vars; }

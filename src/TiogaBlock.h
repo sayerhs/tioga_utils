@@ -94,6 +94,16 @@ public:
 
   double calculate_residuals_old();
 
+  /** Register solution for this meshblock to TIOGA
+   *
+   *  @param tg Reference to TIOGA API object
+   *  @param nvars Number of components in the generic field
+   */
+  void register_solution(TIOGA::tioga&, const int);
+
+  //! Update solution field and return error norm
+  double update_solution(const int);
+
   // Accessors
 
   //! STK Global ID for all the nodes comprising this mesh block

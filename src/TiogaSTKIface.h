@@ -84,6 +84,12 @@ public:
    */
   void post_connectivity_work();
 
+  //! Register solution arrays to TIOGA
+  void register_solution(const int);
+
+  //! Update solution field
+  void update_solution(const int);
+
   /** Return the TIOGA interface object */
   TIOGA::tioga& tioga_iface()
   { return tg_; }

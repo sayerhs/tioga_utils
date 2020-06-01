@@ -72,7 +72,6 @@ void StkIface::initialize()
         motion_->initialize();
     tg_->initialize();
 
-    if (num_vars() > 0) init_vars();
 }
 
 void StkIface::populate_bulk_data()
@@ -92,8 +91,19 @@ void StkIface::load_and_initialize_all(const YAML::Node& node)
     initialize();
 }
 
+void StkIface::register_solution()
+{
+    if (num_vars() < 1) return;
+
+    init_vars();
+    tg_->register_solution(num_vars());
+}
+
+
 void StkIface::write_outputs(const YAML::Node& node, const double time)
 {
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::write_outputs");
+
     bool has_motion = false;
     if (node["motion_info"])
         has_motion = true;
@@ -129,6 +139,8 @@ void StkIface::write_outputs(const YAML::Node& node, const double time)
 
 void StkIface::init_vars()
 {
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::init_vars");
+
     auto* coords = meta_.get_field<VectorFieldType>(
         stk::topology::NODE_RANK, coordinates_name());
     auto* qvars = meta_.get_field<GenericFieldType>(stk::topology::NODE_RANK, "qvars");

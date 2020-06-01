@@ -56,6 +56,7 @@ void ExaTioga::init_stk(const YAML::Node& node)
 void ExaTioga::execute(const YAML::Node& doc)
 {
     perform_connectivity();
+    exchange_solution();
     print_memory_diag(m_comm);
 
     bool do_write = true;
@@ -95,6 +96,26 @@ void ExaTioga::perform_connectivity()
 
     m_stk.post_connectivity_work();
     amrex::Print() << "Domain connectivity completed successfully" << std::endl;
+}
+
+void ExaTioga::exchange_solution()
+{
+    if (m_amr.num_total_vars() < 1) {
+        amrex::Print() << "No solution variables available. Skipping solution update"
+                       << std::endl;
+    }
+    amrex::Print() << "Registering solution variables" << std::endl;
+    m_stk.register_solution();
+    m_amr.register_solution(m_tioga);
+
+    {
+        auto tmon = tioga_nalu::get_timer("tioga::dataUpdate_AMR");
+        m_tioga.dataUpdate_AMR(m_amr.num_cell_vars(), 0);
+        stk::parallel_machine_barrier(m_comm);
+    }
+
+    m_amr.update_solution();
+    m_stk.update_solution();
 }
 
 }

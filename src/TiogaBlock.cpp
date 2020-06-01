@@ -449,4 +449,62 @@ double TiogaBlock::calculate_residuals_old()
   return std::sqrt(rnorm);
 }
 
+void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
+{
+    if (num_nodes_ < 1) return;
+    auto tmon = get_timer("TiogaBlock::register_solution");
+
+    qsol_.resize(num_nodes_ * nvars);
+
+    auto* qvars = meta_.get_field<GenericFieldType>(
+        stk::topology::NODE_RANK, "qvars");
+    stk::mesh::Selector sel = stk::mesh::selectUnion(blkParts_)
+        & (meta_.locally_owned_part() | meta_.globally_shared_part());
+    const auto& bkts = bulk_.get_buckets(
+        stk::topology::NODE_RANK, sel);
+
+    int ip = 0;
+    for (auto b: bkts) {
+        for (size_t in=0; in < b->size(); ++in) {
+            const auto node = (*b)[in];
+            double* qq = stk::mesh::field_data(*qvars, node);
+            for (int i=0; i < nvars; ++i)
+                qsol_[ip++] = qq[i];
+        }
+    }
+
+    tg.registerSolution(meshtag_, qsol_.data());
+}
+
+double TiogaBlock::update_solution(const int nvars)
+{
+    double rnorm = 0.0;
+    if (num_nodes_ < 1) return rnorm;
+    auto tmon = get_timer("TiogaBlock::update_solution");
+
+    auto* qvars = meta_.get_field<GenericFieldType>(
+        stk::topology::NODE_RANK, "qvars");
+    stk::mesh::Selector sel = stk::mesh::selectUnion(blkParts_)
+        & (meta_.locally_owned_part() | meta_.globally_shared_part());
+    const auto& bkts = bulk_.get_buckets(
+        stk::topology::NODE_RANK, sel);
+
+    int ip = 0;
+    for (auto b: bkts) {
+        for (size_t in=0; in < b->size(); ++in) {
+            const auto node = (*b)[in];
+            double* qq = stk::mesh::field_data(*qvars, node);
+            for (int i=0; i < nvars; ++i) {
+                const double diff = qsol_[ip] - qq[i];
+                rnorm += diff * diff;
+                qq[i] = qsol_[ip++];
+            }
+        }
+    }
+
+    rnorm /= static_cast<double>(num_nodes_ * nvars);
+    return std::sqrt(rnorm);
+}
+
+
 } // namespace tioga
