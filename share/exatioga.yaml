@@ -1,0 +1,60 @@
+write_outputs: true
+dump_timers: false
+dump_tioga_partitions: false
+verbose: false
+
+nalu_wind:
+  # Input exodus database
+  input_mesh: oversetSphereTIOGA.g
+
+  # Name of the output exodus database (if desired)
+  output_mesh: overset/sphere.e
+
+  # STK mesh decomposition type for parallel runs
+  decomposition_method: rcb
+
+  # Overset mesh information
+  overset_info:
+    mesh_group:
+      - overset_name: interior
+        mesh_parts:
+          - Unspecified-2-HEX
+          - Unspecified-3-HEX
+          - Unspecified-4-HEX
+          - Unspecified-5-HEX
+          - Unspecified-6-HEX
+          - Unspecified-7-HEX
+        wall_parts: [ wall ]
+        ovset_parts: [ overset ]
+
+amr_wind:
+  amr:
+    n_cell: [64, 64, 64]
+    max_level: 2
+    v: 0
+
+  geometry:
+    prob_lo: [-16.0, -16.0, -16.0]
+    prob_hi: [16.0, 16.0, 16.0]
+    is_periodic: [1, 1, 1]
+
+  field:
+    num_ghost: 0
+    num_cell_vars: 1
+    num_node_vars: 0
+
+  refinement:
+    - type: static
+      num_levels: 2
+      level_0:
+        - lo: [-8.0, -8.0, -8.0]
+          hi: [8.0, 8.0, 8.0]
+      level_1:
+        - lo: [-4.0, -4.0, -4.0]
+          hi: [4.0, 4.0, 4.0]
+
+amrex:
+  verbose: 0
+  signal_handling: 0
+  throw_exception: 1
+
