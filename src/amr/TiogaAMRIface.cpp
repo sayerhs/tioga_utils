@@ -342,23 +342,11 @@ void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real of
                 const amrex::Real y = problo[1] + (j + offset) * dx[1];
                 const amrex::Real z = problo[2] + (k + offset) * dx[2];
 
-                switch (nvars) {
-                case 1:
-                    qarr(i, j, k, 0) = x + y + z;
-                    break;
-
-                case 3:
-                    qarr(i, j, k, 0) = x + y + z;
-                    qarr(i, j, k, 1) = x * x + y * y + z * z;
-                    qarr(i, j, k, 2) = x * y * z;
-                    break;
-
-                default:
-                    for (int n = 0; n < nvars; ++n) {
-                        const int np1 = n + 1;
-                        qarr(i, j, k, n) = np1 * x + 2.0 * np1 * y +  3.0 * np1 * z;
-                    }
-                    break;
+                for (int n = 0; n < nvars; ++n) {
+                    const amrex::Real xfac = 1.0 * ((n + 1) << n);
+                    const amrex::Real yfac = 1.0 * ((n + 2) << n);
+                    const amrex::Real zfac = 1.0 * ((n + 3) << n);
+                    qarr(i, j, k, n) = xfac * x + yfac * y +  zfac * z;
                 }
             });
         }

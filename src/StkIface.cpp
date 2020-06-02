@@ -154,45 +154,21 @@ void StkIface::init_vars()
             double* qq = stk::mesh::field_data(*qvars, node);
 
             if (ncell_vars_ > 0) {
-                switch(ncell_vars_) {
-                case 1:
-                    qq[0] = xyz[0] + xyz[1] + xyz[2];
-                    break;
-
-                case 3:
-                    qq[0] = xyz[0] + xyz[1] + xyz[2];
-                    qq[1] = xyz[0] * xyz[0] + xyz[1] * xyz[1]  + xyz[2] * xyz[2] ;
-                    qq[2] = xyz[0] * xyz[1] * xyz[2];
-                    break;
-
-                default:
-                    for (int n=0; n < ncell_vars_; ++n) {
-                        const int np1 = n+1;
-                        qq[n] = np1 * xyz[0] + 2.0 * np1 * xyz[1] + 3.0 * np1 * xyz[2];
-                    }
-                    break;
+                for (int n=0; n < ncell_vars_; ++n) {
+                    const double xfac = 1.0 * ((n + 1) << n);
+                    const double yfac = 1.0 * ((n + 2) << n);
+                    const double zfac = 1.0 * ((n + 3) << n);
+                    qq[n] = xfac * xyz[0] + yfac * xyz[1] + zfac * xyz[2];
                 }
             }
 
             if (nnode_vars_ > 0) {
                 const int ii = ncell_vars_;
-                switch(nnode_vars_) {
-                case 1:
-                    qq[ii + 0] = xyz[0] + xyz[1] + xyz[2];
-                    break;
-
-                case 3:
-                    qq[ii + 1] = xyz[0] + xyz[1] + xyz[2];
-                    qq[ii + 2] = xyz[0] * xyz[0] + xyz[1] * xyz[1]  + xyz[2] * xyz[2] ;
-                    qq[ii + 3] = xyz[0] * xyz[1] * xyz[2];
-                    break;
-
-                default:
-                    for (int n=0; n < nnode_vars_; ++n) {
-                        const int np1 = n + 1;
-                        qq[ii + n] = np1 * xyz[0] + 2.0 * np1 * xyz[1] + 3.0 * np1 * xyz[2];
-                    }
-                    break;
+                for (int n=0; n < ncell_vars_; ++n) {
+                    const double xfac = 1.0 * ((n + 1) << n);
+                    const double yfac = 1.0 * ((n + 2) << n);
+                    const double zfac = 1.0 * ((n + 3) << n);
+                    qq[ii + n] = xfac * xyz[0] + yfac * xyz[1] + zfac * xyz[2];
                 }
             }
         }
