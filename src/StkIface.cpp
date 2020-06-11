@@ -164,7 +164,7 @@ void StkIface::init_vars()
 
             if (nnode_vars_ > 0) {
                 const int ii = ncell_vars_;
-                for (int n=0; n < ncell_vars_; ++n) {
+                for (int n=0; n < nnode_vars_; ++n) {
                     const double xfac = 1.0 * ((n + 1) << n);
                     const double yfac = 1.0 * ((n + 2) << n);
                     const double zfac = 1.0 * ((n + 3) << n);

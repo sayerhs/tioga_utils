@@ -80,8 +80,8 @@ void TiogaAMRIface::initialize()
         amrex::Print() << "Number of cell variables: " << m_ncell_vars << std::endl;
     }
     if (m_nnode_vars > 0) {
-        m_qnode = &repo.declare_field("qnode", m_nnode_vars, m_num_ghost);
-        repo.declare_field("qnode_ref", m_nnode_vars, m_num_ghost);
+        m_qnode = &repo.declare_field("qnode", m_nnode_vars, m_num_ghost, FieldLoc::NODE);
+        repo.declare_field("qnode_ref", m_nnode_vars, m_num_ghost, FieldLoc::NODE);
         amrex::Print() << "Number of nodal variables: " << m_nnode_vars << std::endl;
     }
 }
@@ -158,16 +158,21 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
     // Register local patches
     int ilp = 0;
     auto& ibcell = mesh.repo().get_int_field("iblank_cell");
+    auto& ibnode = mesh.repo().get_int_field("iblank");
     for (int lev=0; lev < nlevels; ++lev) {
         auto& idmap = gid_map[lev];
         auto& ibfab = ibcell(lev);
+        auto& ibnodefab = ibnode(lev);
 
         // Reset iblanks to 1 before registering with TIOGA
         ibfab.setVal(1);
+        ibnodefab.setVal(1);
         int ii = 0;
         for (amrex::MFIter mfi(ibfab); mfi.isValid(); ++mfi) {
             auto& ib = ibfab[mfi];
-            tg.register_amr_local_data(ilp++, idmap[ii++], ib.dataPtr());
+            auto& ibn = ibnodefab[mfi];
+            tg.register_amr_local_data(
+                ilp++, idmap[ii++], ib.dataPtr(), ibn.dataPtr());
         }
     }
 
@@ -184,7 +189,8 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
     init_var(*m_qnode, m_nnode_vars, 0.0);
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::register_solution");
     const int nlevels = m_mesh->repo().num_active_levels();
-    int ilp = 0;
+    int ipatch_cell = 0;
+    int ipatch_node = 0;
 
     for (int lev=0; lev < nlevels; ++lev) {
         if (m_ncell_vars > 0) {
@@ -193,7 +199,7 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
             auto& qfab = (*m_qcell)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
-                tg.register_amr_solution(ilp++, qarr.dataPtr(), isnodal);
+                tg.register_amr_solution(ipatch_cell++, qarr.dataPtr(), isnodal);
             }
             auto& qref_fab = qref(lev);
             amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
@@ -204,7 +210,7 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
             auto& qfab = (*m_qnode)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
-                tg.register_amr_solution(ilp++, qarr.dataPtr(), isnodal);
+                tg.register_amr_solution(ipatch_node++, qarr.dataPtr(), isnodal);
             }
             auto& qref = m_mesh->repo().get_field("qnode_ref");
             auto& qref_fab = qref(lev);
@@ -278,11 +284,12 @@ void TiogaAMRIface::write_outputs(const int time_index, const double time)
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::write_outputs");
 
     // Total variables = cell + node + iblank_cell + iblank_node
-    const int num_out_vars = num_total_vars() + 1;
+    const int num_out_vars = num_total_vars() + 2;
     auto& repo = m_mesh->repo();
     auto& qout = m_mesh->repo().declare_field("qout", num_out_vars, 0);
     auto& ibcell = repo.get_int_field("iblank_cell");
-    amrex::Vector<std::string> vnames{"iblank_cell"};
+    auto& ibnode = repo.get_int_field("iblank");
+    amrex::Vector<std::string> vnames{"iblank_cell", "iblank"};
     for (int n=0; n < m_ncell_vars; ++n) {
         vnames.push_back("qcell" + std::to_string(n));
     }
@@ -297,8 +304,12 @@ void TiogaAMRIface::write_outputs(const int time_index, const double time)
             auto& ibc = ibcell(lev);
             amrex::MultiFab::Copy(qfab, amrex::ToMultiFab(ibc), 0, 0, 1, 0);
         }
+        {
+            auto& ibn = ibnode(lev);
+            amrex::MultiFab::Copy(qfab, amrex::ToMultiFab(ibn), 0, 1, 1, 0);
+        }
 
-        int icomp = 1;
+        int icomp = 2;
         if (m_ncell_vars > 0) {
             auto& qvars = repo.get_field("qcell")(lev);
             amrex::MultiFab::Copy(qfab, qvars, 0, icomp, m_ncell_vars, 0);
