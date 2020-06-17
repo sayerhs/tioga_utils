@@ -195,22 +195,20 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
     for (int lev=0; lev < nlevels; ++lev) {
         if (m_ncell_vars > 0) {
             auto& qref = m_mesh->repo().get_field("qcell_ref");
-            const bool isnodal = false;
             auto& qfab = (*m_qcell)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
-                tg.register_amr_solution(ipatch_cell++, qarr.dataPtr(), isnodal);
+                tg.register_amr_solution(ipatch_cell++, qarr.dataPtr(), m_ncell_vars, 0);
             }
             auto& qref_fab = qref(lev);
             amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
                                   qref.num_comp(), qref.num_grow());
         }
         if (m_nnode_vars > 0) {
-            const bool isnodal = true;
             auto& qfab = (*m_qnode)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
-                tg.register_amr_solution(ipatch_node++, qarr.dataPtr(), isnodal);
+                tg.register_amr_solution(ipatch_node++, qarr.dataPtr(), 0, m_nnode_vars);
             }
             auto& qref = m_mesh->repo().get_field("qnode_ref");
             auto& qref_fab = qref(lev);

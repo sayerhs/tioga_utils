@@ -110,7 +110,7 @@ void ExaTioga::exchange_solution()
 
     {
         auto tmon = tioga_nalu::get_timer("tioga::dataUpdate_AMR");
-        m_tioga.dataUpdate_AMR(m_amr.num_cell_vars(), 0);
+        m_tioga.dataUpdate_AMR();
         stk::parallel_machine_barrier(m_comm);
     }
 

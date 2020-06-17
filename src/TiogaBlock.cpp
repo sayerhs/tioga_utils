@@ -473,7 +473,7 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
         }
     }
 
-    tg.registerSolution(meshtag_, qsol_.data());
+    tg.register_unstructured_solution(meshtag_, qsol_.data(),nvars,0);
 }
 
 double TiogaBlock::update_solution(const int nvars)
