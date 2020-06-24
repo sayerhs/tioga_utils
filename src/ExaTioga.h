@@ -32,6 +32,8 @@ public:
     void check_solution_norm();
 
 private:
+    void run_timesteps();
+
     stk::ParallelMachine m_comm;
 
     tioga_nalu::StkIface m_stk;

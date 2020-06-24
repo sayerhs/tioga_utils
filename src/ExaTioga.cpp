@@ -59,12 +59,34 @@ void ExaTioga::execute(const YAML::Node& doc)
     exchange_solution();
     print_memory_diag(m_comm);
 
+    if (m_stk.has_motion()) run_timesteps();
+
     bool do_write = true;
     get_optional(doc, "write_outputs", do_write);
     if (do_write) {
         m_amr.write_outputs(0, 0.0);
         m_stk.write_outputs(doc["nalu_wind"], 0.0);
     }
+}
+
+void ExaTioga::run_timesteps()
+{
+    auto tmon = tioga_nalu::get_timer("ExaTioga::run_timesteps");
+    const int nsteps = m_stk.num_timesteps();
+    amrex::Print() << "Executing mesh motion for " << nsteps << " steps"
+                   << std::endl << std::endl;
+    for (int nt=0; nt < nsteps; ++nt) {
+        m_stk.move_mesh(nt);
+
+        amrex::Print()
+            << "------------------------------------------------------------\n"
+            << "Timestep / time = " << (nt + 1) << "; "
+            << m_stk.current_time() << " s" << std::endl;
+        perform_connectivity();
+        exchange_solution();
+        print_memory_diag(m_comm);
+    }
+    stk::parallel_machine_barrier(m_comm);
 }
 
 void ExaTioga::perform_connectivity()

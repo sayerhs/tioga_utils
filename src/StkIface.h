@@ -49,12 +49,27 @@ public:
         tg_->update_solution(num_vars());
     }
 
+    void move_mesh(int nt)
+    {
+        motion_->execute(nt);
+    }
+
     std::string coordinates_name() const
     {
         return (has_motion_? "current_coordinates" : "coordinates");
     }
 
     bool has_motion() const { return has_motion_; }
+
+    int num_timesteps() const
+    {
+        return (has_motion() ? motion_->num_steps() : 0);
+    }
+
+    double current_time() const
+    {
+        return (has_motion() ? motion_->current_time() : 0.0);
+    }
 
     int& num_cell_vars() { return ncell_vars_; }
     const int& num_cell_vars() const { return ncell_vars_; }

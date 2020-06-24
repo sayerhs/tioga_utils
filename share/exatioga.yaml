@@ -27,9 +27,27 @@ nalu_wind:
         wall_parts: [ wall ]
         ovset_parts: [ overset ]
 
+  # # Mesh motion
+  # motion_info:
+  #   start_time: 0.0
+  #   delta_t: 0.0196796158538984
+  #   num_time_steps: 10
+
+  #   motion_group:
+  #     - omega: 0.888
+  #       axis: [ 0.0, 0.0, 1.0 ]
+  #       origin: [ 0.0, 0.0, 0.0 ]
+  #       mesh_parts:
+  #         - Unspecified-2-HEX
+  #         - Unspecified-3-HEX
+  #         - Unspecified-4-HEX
+  #         - Unspecified-5-HEX
+  #         - Unspecified-6-HEX
+  #         - Unspecified-7-HEX
+
 amr_wind:
   amr:
-    n_cell: [64, 64, 64]
+    n_cell: [128, 128, 128]
     max_level: 2
     v: 0
 
@@ -39,9 +57,9 @@ amr_wind:
     is_periodic: [1, 1, 1]
 
   field:
-    num_ghost: 0
-    num_cell_vars: 1
-    num_node_vars: 0
+    num_ghost: 3
+    num_cell_vars: 2
+    num_node_vars: 2
 
   refinement:
     - type: static
