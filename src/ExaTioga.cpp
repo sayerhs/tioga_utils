@@ -55,21 +55,23 @@ void ExaTioga::init_stk(const YAML::Node& node)
 
 void ExaTioga::execute(const YAML::Node& doc)
 {
+    bool do_write = true;
+    get_optional(doc, "write_outputs", do_write);
+
     perform_connectivity();
     exchange_solution();
     print_memory_diag(m_comm);
 
-    if (m_stk.has_motion()) run_timesteps();
-
-    bool do_write = true;
-    get_optional(doc, "write_outputs", do_write);
-    if (do_write) {
-        m_amr.write_outputs(0, 0.0);
-        m_stk.write_outputs(doc["nalu_wind"], 0.0);
+    size_t ofileID;
+    if(do_write) {
+        m_amr.write_outputs(0, m_stk.current_time());
+        ofileID = m_stk.write_outputs(doc["nalu_wind"], m_stk.current_time());
     }
+
+    if (m_stk.has_motion()) run_timesteps(do_write, ofileID);
 }
 
-void ExaTioga::run_timesteps()
+void ExaTioga::run_timesteps(const bool do_write, size_t ofileID)
 {
     auto tmon = tioga_nalu::get_timer("ExaTioga::run_timesteps");
     const int nsteps = m_stk.num_timesteps();
@@ -85,6 +87,11 @@ void ExaTioga::run_timesteps()
         perform_connectivity();
         exchange_solution();
         print_memory_diag(m_comm);
+
+        if (do_write) {
+            m_amr.write_outputs((nt+1), m_stk.current_time());
+            m_stk.write_outputs(ofileID, m_stk.current_time());
+        }
     }
     stk::parallel_machine_barrier(m_comm);
 }

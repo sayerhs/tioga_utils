@@ -32,7 +32,7 @@ public:
     void check_solution_norm();
 
 private:
-    void run_timesteps();
+    void run_timesteps(const bool do_write, size_t ofileID);
 
     stk::ParallelMachine m_comm;
 

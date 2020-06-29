@@ -100,7 +100,7 @@ void StkIface::register_solution()
 }
 
 
-void StkIface::write_outputs(const YAML::Node& node, const double time)
+size_t StkIface::write_outputs(const YAML::Node& node, const double time)
 {
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::write_outputs");
 
@@ -132,6 +132,15 @@ void StkIface::write_outputs(const YAML::Node& node, const double time)
         stkio_.add_field(fh, *qvars);
     }
 
+    stkio_.begin_output_step(fh, time);
+    stkio_.write_defined_output_fields(fh);
+    stkio_.end_output_step(fh);
+
+    return fh;
+}
+
+void StkIface::write_outputs(size_t fh, const double time)
+{
     stkio_.begin_output_step(fh, time);
     stkio_.write_defined_output_fields(fh);
     stkio_.end_output_step(fh);
