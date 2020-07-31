@@ -141,6 +141,9 @@ size_t StkIface::write_outputs(const YAML::Node& node, const double time)
 
 void StkIface::write_outputs(size_t fh, const double time)
 {
+    if (bulk_.parallel_rank() == 0)
+        std::cout << "Writing to STK output file at: " << time << std::endl;
+
     stkio_.begin_output_step(fh, time);
     stkio_.write_defined_output_fields(fh);
     stkio_.end_output_step(fh);

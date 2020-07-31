@@ -34,6 +34,8 @@ ExaTioga::ExaTioga(stk::ParallelMachine& comm)
     , m_stk(comm)
     , m_amr()
     , m_tioga(tioga_nalu::TiogaRef::self().get())
+    , m_doWrite(true)
+    , m_outputFreq(1)
 {
     const int iproc = stk::parallel_machine_rank(comm);
     const int nproc = stk::parallel_machine_size(comm);
@@ -55,23 +57,23 @@ void ExaTioga::init_stk(const YAML::Node& node)
 
 void ExaTioga::execute(const YAML::Node& doc)
 {
-    bool do_write = true;
-    get_optional(doc, "write_outputs", do_write);
+    get_optional(doc, "write_outputs", m_doWrite);
+    get_optional(doc, "output_frequency", m_outputFreq);
 
     perform_connectivity();
     exchange_solution();
     print_memory_diag(m_comm);
 
     size_t ofileID;
-    if(do_write) {
+    if(m_doWrite) {
         m_amr.write_outputs(0, m_stk.current_time());
         ofileID = m_stk.write_outputs(doc["nalu_wind"], m_stk.current_time());
     }
 
-    if (m_stk.has_motion()) run_timesteps(do_write, ofileID);
+    if (m_stk.has_motion()) run_timesteps(ofileID);
 }
 
-void ExaTioga::run_timesteps(const bool do_write, size_t ofileID)
+void ExaTioga::run_timesteps(size_t ofileID)
 {
     auto tmon = tioga_nalu::get_timer("ExaTioga::run_timesteps");
     const int nsteps = m_stk.num_timesteps();
@@ -88,7 +90,8 @@ void ExaTioga::run_timesteps(const bool do_write, size_t ofileID)
         exchange_solution();
         print_memory_diag(m_comm);
 
-        if (do_write) {
+        const bool isOutput = ((nt+1) % m_outputFreq) == 0;
+        if (m_doWrite && isOutput) {
             m_amr.write_outputs((nt+1), m_stk.current_time());
             m_stk.write_outputs(ofileID, m_stk.current_time());
         }
