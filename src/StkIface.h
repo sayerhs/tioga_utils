@@ -30,7 +30,9 @@ public:
 
     void load_and_initialize_all(const YAML::Node&);
 
-    void write_outputs(const YAML::Node&, const double time = 0.0);
+    size_t write_outputs(const YAML::Node&, const double time = 0.0);
+
+    void write_outputs(size_t fh, const double time);
 
     void register_mesh()
     {

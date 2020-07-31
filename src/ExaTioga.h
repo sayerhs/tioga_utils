@@ -32,7 +32,7 @@ public:
     void check_solution_norm();
 
 private:
-    void run_timesteps();
+    void run_timesteps(size_t ofileID);
 
     stk::ParallelMachine m_comm;
 
@@ -40,6 +40,9 @@ private:
     TiogaAMRIface m_amr;
 
     TIOGA::tioga& m_tioga;
+
+    bool m_do_write{true};
+    int m_output_freq{1};
 };
 
 }
