@@ -41,8 +41,8 @@ private:
 
     TIOGA::tioga& m_tioga;
 
-    bool m_doWrite;
-    int m_outputFreq;
+    bool m_do_write{true};
+    int m_output_freq{1};
 };
 
 }
