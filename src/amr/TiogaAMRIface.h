@@ -51,6 +51,10 @@ private:
     //! Reference to node variable field
     Field* m_qnode{nullptr};
 
+    std::vector<int> m_ints;
+
+    std::vector<double> m_reals;
+
     //! Number of ghost cells
     int m_num_ghost{3};
 

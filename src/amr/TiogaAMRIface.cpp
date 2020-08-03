@@ -106,8 +106,8 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
         }
     }
 
-    std::vector<int> gint_data(ints_per_grid * ngrids_global);
-    std::vector<double> greal_data(reals_per_grid * ngrids_global);
+    m_ints.resize(ints_per_grid * ngrids_global);
+    m_reals.resize(reals_per_grid * ngrids_global);
     std::vector<int> lgrid_id(nproc, 0);
     std::vector<std::vector<int>> gid_map(nlevels);
 
@@ -121,21 +121,21 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
         const amrex::Real* dx = mesh.Geom(lev).CellSize();
 
         for (long d = 0; d < dm.size(); ++d) {
-            gint_data[iix++] = igp;             // Global index of this patch
-            gint_data[iix++] = lev;             // Level of this patch
-            gint_data[iix++] = dm[d];           // MPI rank of this patch
-            gint_data[iix++] = lgrid_id[dm[d]]; // Local ID for this patch
+            m_ints[iix++] = igp;             // Global index of this patch
+            m_ints[iix++] = lev;             // Level of this patch
+            m_ints[iix++] = dm[d];           // MPI rank of this patch
+            m_ints[iix++] = lgrid_id[dm[d]]; // Local ID for this patch
 
             const auto& bx = ba[d];
             const int* lo = bx.loVect();
             const int* hi = bx.hiVect();
 
             for (int i = 0; i < AMREX_SPACEDIM; ++i) {
-                gint_data[iix + i] = lo[i];
-                gint_data[iix + AMREX_SPACEDIM + i] = hi[i];
+                m_ints[iix + i] = lo[i];
+                m_ints[iix + AMREX_SPACEDIM + i] = hi[i];
 
-                greal_data[irx + i] = problo[i] + lo[i] * dx[i];
-                greal_data[irx + AMREX_SPACEDIM + i] = dx[i];
+                m_reals[irx + i] = problo[i] + lo[i] * dx[i];
+                m_reals[irx + AMREX_SPACEDIM + i] = dx[i];
             }
             iix += 2 * AMREX_SPACEDIM;
             irx += 2 * AMREX_SPACEDIM;
@@ -152,7 +152,7 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
     }
 
     tg.register_amr_global_data(
-        m_num_ghost, gint_data.data(), greal_data.data(), ngrids_global);
+        m_num_ghost, m_ints.data(), m_reals.data(), ngrids_global);
     tg.set_amr_patch_count(ngrids_local);
 
     // Register local patches
@@ -177,7 +177,7 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
     }
 
     if (verbose) {
-        output_grid_summary(ngrids_global, ngrids_local, gint_data, greal_data);
+        output_grid_summary(ngrids_global, ngrids_local, m_ints, m_reals);
     }
 }
 
