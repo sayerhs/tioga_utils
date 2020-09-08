@@ -220,6 +220,12 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
 
 void TiogaAMRIface::update_solution()
 {
+  update_solution(true);
+  update_solution(false);
+}
+
+void TiogaAMRIface::update_solution(const bool isField)
+{
     if (num_total_vars() < 1) return;
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::update_solution");
     const int nlevels = m_mesh->repo().num_active_levels();
@@ -230,19 +236,25 @@ void TiogaAMRIface::update_solution()
         if (m_ncell_vars > 0) {
             const int ncomp = m_ncell_vars;
             auto& qref = m_mesh->repo().get_field("qcell_ref");
-            auto& qfab = (*m_qcell)(lev);
             auto& qref_fab = qref(lev);
+            auto& qfab = (*m_qcell)(lev);
+            auto& ibcell = m_mesh->repo().get_int_field("iblank_cell");
+            auto& ibcell_fab = ibcell(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto bx = mfi.tilebox();
-                counter += bx.numPts() * ncomp;
                 const auto qarr = qfab.array(mfi);
                 const auto qref_arr = qref_fab.array(mfi);
+                const auto ibcell_arr = ibcell_fab.array(mfi);
 
                 amrex::ParallelFor(bx, [&](int i, int j, int k) {
-                    for (int n = 0; n < ncomp; ++n) {
-                        amrex::Real diff =
-                            qarr(i, j, k, n) - qref_arr(i, j, k, n);
-                        rnorm += diff * diff;
+                    if ((isField && (ibcell_arr(i,j,k,0) == 1)) ||
+                        (!isField && (ibcell_arr(i,j,k,0) == -1))) {
+                        counter += ncomp;
+                        for (int n = 0; n < ncomp; ++n) {
+                            amrex::Real diff =
+                                qarr(i, j, k, n) - qref_arr(i, j, k, n);
+                            rnorm += diff * diff;
+                        }
                     }
                 });
             }
@@ -250,19 +262,25 @@ void TiogaAMRIface::update_solution()
         if (m_nnode_vars > 0) {
             const int ncomp = m_nnode_vars;
             auto& qref = m_mesh->repo().get_field("qnode_ref");
-            auto& qfab = (*m_qnode)(lev);
             auto& qref_fab = qref(lev);
+            auto& qfab = (*m_qnode)(lev);
+            auto& ibnode = m_mesh->repo().get_int_field("iblank");
+            auto& ibnode_fab = ibnode(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto bx = mfi.tilebox();
-                counter += bx.numPts() * ncomp;
                 const auto qarr = qfab.array(mfi);
                 const auto qref_arr = qref_fab.array(mfi);
+                const auto ibnode_arr = ibnode_fab.array(mfi);
 
                 amrex::ParallelFor(bx, [&](int i, int j, int k) {
-                    for (int n = 0; n < ncomp; ++n) {
-                        amrex::Real diff =
-                            qarr(i, j, k, n) - qref_arr(i, j, k, n);
-                        rnorm += diff * diff;
+                    if ((isField && (ibnode_arr(i,j,k,0) == 1)) ||
+                        (!isField && (ibnode_arr(i,j,k,0) == -1))) {
+                        counter += ncomp;
+                        for (int n = 0; n < ncomp; ++n) {
+                            amrex::Real diff =
+                                qarr(i, j, k, n) - qref_arr(i, j, k, n);
+                            rnorm += diff * diff;
+                        }
                     }
                 });
             }
@@ -273,8 +291,14 @@ void TiogaAMRIface::update_solution()
     rnorm = std::sqrt(rnorm);
     amrex::ParallelDescriptor::ReduceRealMax(
         rnorm, amrex::ParallelDescriptor::IOProcessorNumber());
-    amrex::Print() << "TIOGA interpolation error (max L2 norm) for AMR mesh: "
-                   << rnorm << std::endl;
+    if (isField) {
+        amrex::Print() << "TIOGA interpolation error (max L2 norm) for AMR mesh on field points: "
+                       << rnorm << std::endl;
+    }
+    else {
+      amrex::Print() << "TIOGA interpolation error (max L2 norm) for AMR mesh on fringe points: "
+                     << rnorm << std::endl;
+    }
 }
 
 void TiogaAMRIface::write_outputs(const int time_index, const double time)

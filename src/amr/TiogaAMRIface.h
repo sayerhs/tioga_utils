@@ -43,6 +43,8 @@ public:
 private:
     void init_var(Field&, const int nvars, const amrex::Real offset);
 
+    void update_solution(const bool isField);
+
     std::unique_ptr<StructMesh> m_mesh;
 
     //! Reference to cell variable field
