@@ -197,9 +197,6 @@ private:
 
   NgpTiogaBlock bdata_;
 
-  //! Coordinates for this mesh block in TIOGA format
-  std::vector<double> xyz_;
-
   //! Node IBLANK information from TIOGA
   std::vector<int> iblank_;
 
@@ -212,18 +209,6 @@ private:
    *  connectivity information.
    */
   std::map<stk::mesh::EntityId, size_t> node_map_;
-
-  //! Wall BC index array
-  std::vector<int> wallIDs_;
-
-  //! Overset BC index array
-  std::vector<int> ovsetIDs_;
-
-  //! Number of vertices per topology type found
-  std::vector<int> num_verts_;
-
-  //! Number of cells per topology in this mesh
-  std::vector<int> num_cells_;
 
   /** Connectivity data structure
    *

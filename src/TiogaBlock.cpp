@@ -98,7 +98,6 @@ void TiogaBlock::update_coords()
       double* pt = stk::mesh::field_data(*coords, node);
       for (int i=0; i < ndim_; i++) {
         ngp_xyz(ip * ndim_ + i) = pt[i];
-        xyz_[ip * ndim_ + i] = pt[i];
       }
       ip++;
     }
@@ -236,7 +235,6 @@ void TiogaBlock::process_nodes()
 
   if (is_init_ || ncount != num_nodes_) {
     num_nodes_ = ncount;
-    xyz_.resize(ndim_ * num_nodes_);
     iblank_.resize(num_nodes_, 1);
 
     bdata_.xyz_.init("xyz", ndim_ * num_nodes_);
@@ -257,7 +255,6 @@ void TiogaBlock::process_nodes()
 
       double* pt = stk::mesh::field_data(*coords, node);
       for (int i=0; i < ndim_; i++) {
-        xyz_[ip * ndim_ + i] = pt[i];
         ngp_xyz(ip * ndim_ + i) = pt[i];
       }
       nidmap(node.local_offset()) = ip + 1; // TIOGA uses 1-based indexing
@@ -286,8 +283,6 @@ void TiogaBlock::process_wallbc()
 
   if (is_init_ || (ncount != num_wallbc_)) {
     num_wallbc_ = ncount;
-    wallIDs_.resize(num_wallbc_);
-
     bdata_.wallIDs_.init("wall_ids", num_wallbc_);
   }
 
@@ -297,9 +292,7 @@ void TiogaBlock::process_wallbc()
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
       stk::mesh::Entity node = (*b)[in];
-      stk::mesh::EntityId nid = bulk_.identifier(node);
-      wallids(ip) = nidmap(node.local_offset());
-      wallIDs_[ip++] = node_map_[nid];
+      wallids(ip++) = nidmap(node.local_offset());
     }
   }
   bdata_.wallIDs_.sync_to_device();
@@ -317,8 +310,6 @@ void TiogaBlock::process_ovsetbc()
 
   if (is_init_ || (ncount != num_ovsetbc_)) {
     num_ovsetbc_ = ncount;
-    ovsetIDs_.resize(num_ovsetbc_);
-
     bdata_.ovsetIDs_.init("overset_ids", num_ovsetbc_);
   }
 
@@ -328,9 +319,7 @@ void TiogaBlock::process_ovsetbc()
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
       stk::mesh::Entity node = (*b)[in];
-      stk::mesh::EntityId nid = bulk_.identifier(node);
-      ovsetids(ip) = nidmap(node.local_offset());
-      ovsetIDs_[ip++] = node_map_[nid];
+      ovsetids(ip++) = nidmap(node.local_offset());
     }
   }
   bdata_.ovsetIDs_.sync_to_device();
@@ -360,12 +349,9 @@ void TiogaBlock::process_elements()
 
   // 2. Resize arrays used to pass data to TIOGA grid registration interface
   auto ntypes = conn_map_.size();
-  num_verts_.resize(ntypes);
-  num_cells_.resize(ntypes);
-  {
-      bdata_.num_verts_.init("num_verts_per_etype", ntypes);
-      bdata_.num_cells_.init("num_cells_per_etype", ntypes);
-  }
+  bdata_.num_verts_.init("num_verts_per_etype", ntypes);
+  bdata_.num_cells_.init("num_cells_per_etype", ntypes);
+
   connect_.resize(ntypes);
   if (tioga_conn_)
     delete[] tioga_conn_;
@@ -377,10 +363,10 @@ void TiogaBlock::process_elements()
   // 3. Populate TIOGA data structures
   int idx = 0;
   int cres_count = 0;
+  int tot_elems = 0;
   for (auto kv: conn_map_) {
-    num_verts_[idx] = kv.first;
-    num_cells_[idx] = kv.second;
     connect_[idx].resize(kv.first * kv.second);
+    tot_elems += kv.second;
     {
         bdata_.num_verts_.h_view[idx] = kv.first;
         bdata_.num_cells_.h_view[idx] = kv.second;
@@ -392,13 +378,11 @@ void TiogaBlock::process_elements()
     cres_count += kv.first * kv.second;
   }
 
-  int tot_elems = std::accumulate(num_cells_.begin(), num_cells_.end(), 0);
+  std::cout << "Total elements = " << tot_elems << std::endl;
   iblank_cell_.resize(tot_elems);
-  {
-      bdata_.iblank_cell_.init("iblank_cell", tot_elems);
-      bdata_.cell_res_.init("cell_res", tot_elems);
-      bdata_.cell_gid_.init("cell_gid", tot_elems);
-  }
+  bdata_.iblank_cell_.init("iblank_cell", tot_elems);
+  bdata_.cell_res_.init("cell_res", tot_elems);
+  bdata_.cell_gid_.init("cell_gid", tot_elems);
 
   // 4. Create connectivity map based on local node index (xyz_)
   int ep = 0;
@@ -472,8 +456,9 @@ void TiogaBlock::register_solution_old(TIOGA::tioga& tg)
 
   qsol_.resize(num_nodes_);
 
+  auto& xyz = bdata_.xyz_.h_view;
   for (int i=0, ii=0; i<num_nodes_; i++, ii+=3) {
-    qsol_[i] = xyz_[ii] + xyz_[ii+1] + xyz_[ii+2];
+    qsol_[i] = xyz[ii] + xyz[ii+1] + xyz[ii+2];
   }
 
   tg.registerSolution(meshtag_, qsol_.data());
@@ -487,8 +472,9 @@ double TiogaBlock::calculate_residuals_old()
   if (num_nodes_ < 1) return rnorm;
   auto timeMon = get_timer("TiogaBlock::calculate_residuals");
 
+  auto& xyz = bdata_.xyz_.h_view;
   for (int i=0, ii=0; i < num_nodes_; i++, ii+=3) {
-    double diff = qsol_[i] - (xyz_[ii] + xyz_[ii+1] + xyz_[ii+2]);
+    double diff = qsol_[i] - (xyz[ii] + xyz[ii+1] + xyz[ii+2]);
     rnorm += diff * diff;
   }
 
