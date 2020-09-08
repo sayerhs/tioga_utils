@@ -193,7 +193,7 @@ void TiogaBlock::get_donor_info(TIOGA::tioga& tg, stk::mesh::EntityProcVec& egve
     int procid = receptorInfo[i];
     int nweights = receptorInfo[i+3];           // Offset to get the donor element
     int elemid_tmp = inode[idx + nweights]; // Local index for lookup
-    int elemID = elemid_map_[elemid_tmp];       // Global ID of element
+    auto elemID = bdata_.cell_gid_.h_view[elemid_tmp];       // Global ID of element
 
     // Move the offset index for next call
     idx += nweights + 1;
@@ -238,17 +238,12 @@ void TiogaBlock::process_nodes()
     num_nodes_ = ncount;
     xyz_.resize(ndim_ * num_nodes_);
     iblank_.resize(num_nodes_, 1);
-    node_res_.resize(num_nodes_, 1.0*meshtag_);
 
     bdata_.xyz_.init("xyz", ndim_ * num_nodes_);
     bdata_.iblank_.init("iblank_node", num_nodes_);
     bdata_.node_res_.init("node_res", num_nodes_);
     bdata_.node_map_.init("stk_to_tioga_id", bulk_.get_size_of_entity_index_space());
     bdata_.node_gid_.init("node_gid", num_nodes_);
-
-    // Should we clear node_map_???
-    // node_map_.clear();
-    nodeid_map_.resize(num_nodes_);
   }
 
   auto& ngp_xyz = bdata_.xyz_.h_view;
@@ -268,7 +263,6 @@ void TiogaBlock::process_nodes()
       nidmap(node.local_offset()) = ip + 1; // TIOGA uses 1-based indexing
       nodegid(ip) = nid;
       node_map_[nid] = ip + 1; // TIOGA uses 1-based indexing
-      nodeid_map_[ip] = nid;
       ip++;
     }
   }
@@ -399,9 +393,7 @@ void TiogaBlock::process_elements()
   }
 
   int tot_elems = std::accumulate(num_cells_.begin(), num_cells_.end(), 0);
-  elemid_map_.resize(tot_elems);
   iblank_cell_.resize(tot_elems);
-  cell_res_.resize(cres_count, 1.0*meshtag_);
   {
       bdata_.iblank_cell_.init("iblank_cell", tot_elems);
       bdata_.cell_res_.init("cell_res", tot_elems);
@@ -419,8 +411,7 @@ void TiogaBlock::process_elements()
     for (size_t in=0; in < b->size(); in++) {
       const stk::mesh::Entity elem = (*b)[in];
       const stk::mesh::EntityId eid = bulk_.identifier(elem);
-      cellgid(ep) = eid;
-      elemid_map_[ep++] = eid;
+      cellgid(ep++) = eid;
       const stk::mesh::Entity* enodes = b->begin_nodes(in);
       for (int i=0; i < npe; i++) {
         const stk::mesh::EntityId nid = bulk_.identifier(enodes[i]);

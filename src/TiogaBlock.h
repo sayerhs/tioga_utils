@@ -131,12 +131,8 @@ public:
   // Accessors
 
   //! STK Global ID for all the nodes comprising this mesh block
-  inline const std::vector<stk::mesh::EntityId>& node_id_map() const
-  { return nodeid_map_; }
-
-  //! STK Global ID for all the elements comprising this mesh block
-  inline const std::vector<stk::mesh::EntityId>& elem_id_map() const
-  { return elemid_map_; }
+  inline const ngp::NgpDualArray<stk::mesh::EntityId*>::HostArrayType& node_id_map() const
+  { return bdata_.node_gid_.h_view; }
 
   //! IBLANK mask indicating whether the element is active or inactive
   inline const std::vector<int>& iblank_cell() const
@@ -247,18 +243,8 @@ private:
    */
   int** tioga_conn_{nullptr};
 
-  //! STK Global ID for Nodes
-  std::vector<stk::mesh::EntityId> nodeid_map_;
-
-  //! STK Global ID for elements
-  std::vector<stk::mesh::EntityId> elemid_map_;
-
   //! Receptor information for this mesh block
   std::vector<int> receptor_info_;
-
-  //! User specified cell and node resolutions
-  std::vector<double> node_res_;
-  std::vector<double> cell_res_;
 
   std::vector<double> qsol_;
 
