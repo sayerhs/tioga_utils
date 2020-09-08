@@ -40,6 +40,10 @@ struct NgpTiogaBlock
     ngp::NgpDualArray<int*> num_verts_;
     ngp::NgpDualArray<int*> num_cells_;
     ngp::NgpDualArray<int*> connect_[max_vertex_types];
+
+    ngp::NgpDualArray<int*> node_map_;
+    ngp::NgpDualArray<stk::mesh::EntityId*> node_gid_;
+    ngp::NgpDualArray<stk::mesh::EntityId*> cell_gid_;
 };
 
 /**

@@ -243,6 +243,8 @@ void TiogaBlock::process_nodes()
     bdata_.xyz_.init("xyz", ndim_ * num_nodes_);
     bdata_.iblank_.init("iblank_node", num_nodes_);
     bdata_.node_res_.init("node_res", num_nodes_);
+    bdata_.node_map_.init("stk_to_tioga_id", bulk_.get_size_of_entity_index_space());
+    bdata_.node_gid_.init("node_gid", num_nodes_);
 
     // Should we clear node_map_???
     // node_map_.clear();
@@ -250,6 +252,8 @@ void TiogaBlock::process_nodes()
   }
 
   auto& ngp_xyz = bdata_.xyz_.h_view;
+  auto& nidmap = bdata_.node_map_.h_view;
+  auto& nodegid = bdata_.node_gid_.h_view;
   int ip =0; // Index into the xyz_ array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
@@ -261,6 +265,8 @@ void TiogaBlock::process_nodes()
         xyz_[ip * ndim_ + i] = pt[i];
         ngp_xyz(ip * ndim_ + i) = pt[i];
       }
+      nidmap(node.local_offset()) = ip + 1; // TIOGA uses 1-based indexing
+      nodegid(ip) = nid;
       node_map_[nid] = ip + 1; // TIOGA uses 1-based indexing
       nodeid_map_[ip] = nid;
       ip++;
@@ -268,6 +274,8 @@ void TiogaBlock::process_nodes()
   }
 
   bdata_.xyz_.sync_to_device();
+  bdata_.node_map_.sync_to_device();
+  bdata_.node_gid_.sync_to_device();
   Kokkos::deep_copy(bdata_.iblank_.h_view, 1);
   Kokkos::deep_copy(bdata_.iblank_.d_view, 1);
 }
@@ -290,12 +298,13 @@ void TiogaBlock::process_wallbc()
   }
 
   auto& wallids = bdata_.wallIDs_.h_view;
+  auto& nidmap = bdata_.node_map_.h_view;
   int ip = 0; // Index into the wallIDs array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
       stk::mesh::Entity node = (*b)[in];
       stk::mesh::EntityId nid = bulk_.identifier(node);
-      wallids(ip) = node_map_[nid];
+      wallids(ip) = nidmap(node.local_offset());
       wallIDs_[ip++] = node_map_[nid];
     }
   }
@@ -320,12 +329,13 @@ void TiogaBlock::process_ovsetbc()
   }
 
   auto& ovsetids = bdata_.ovsetIDs_.h_view;
+  auto& nidmap = bdata_.node_map_.h_view;
   int ip = 0; // Index into ovsetIDs array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
       stk::mesh::Entity node = (*b)[in];
       stk::mesh::EntityId nid = bulk_.identifier(node);
-      ovsetids(ip) = node_map_[nid];
+      ovsetids(ip) = nidmap(node.local_offset());
       ovsetIDs_[ip++] = node_map_[nid];
     }
   }
@@ -395,10 +405,13 @@ void TiogaBlock::process_elements()
   {
       bdata_.iblank_cell_.init("iblank_cell", tot_elems);
       bdata_.cell_res_.init("cell_res", tot_elems);
+      bdata_.cell_gid_.init("cell_gid", tot_elems);
   }
 
   // 4. Create connectivity map based on local node index (xyz_)
   int ep = 0;
+  auto& nidmap = bdata_.node_map_.h_view;
+  auto& cellgid = bdata_.cell_gid_.h_view;
   for (auto b: mbkts) {
     const int npe = b->num_nodes(0);
     const int idx = conn_ids[npe];
@@ -406,11 +419,12 @@ void TiogaBlock::process_elements()
     for (size_t in=0; in < b->size(); in++) {
       const stk::mesh::Entity elem = (*b)[in];
       const stk::mesh::EntityId eid = bulk_.identifier(elem);
+      cellgid(ep) = eid;
       elemid_map_[ep++] = eid;
       const stk::mesh::Entity* enodes = b->begin_nodes(in);
       for (int i=0; i < npe; i++) {
         const stk::mesh::EntityId nid = bulk_.identifier(enodes[i]);
-        bdata_.connect_[idx].h_view(offset) = node_map_[nid];
+        bdata_.connect_[idx].h_view(offset) = nidmap(enodes[i].local_offset());
         connect_[idx][offset++] = node_map_[nid];
       }
     }
@@ -422,6 +436,7 @@ void TiogaBlock::process_elements()
     tioga_conn_[i] = connect_[i].data();
   }
 
+  bdata_.cell_gid_.sync_to_device();
   Kokkos::deep_copy(bdata_.iblank_cell_.h_view, 1);
   Kokkos::deep_copy(bdata_.iblank_cell_.d_view, 1);
 }
@@ -439,20 +454,20 @@ void TiogaBlock::register_block(TIOGA::tioga& tg)
 
   // Register the mesh block information to TIOGA
   tg.registerGridData(
-    meshtag_,           // Unique body tag
-    num_nodes_,         // Number of nodes in this mesh block
-    xyz_.data(),        // Nodal coordinates
-    iblank_.data(),     // iblank array corresponding to nodes
-    num_wallbc_,        // Number of Wall BC nodes
-    num_ovsetbc_,       // Number of overset BC nodes
-    wallIDs_.data(),    // Node IDs of wall BC nodes
-    ovsetIDs_.data(),   // Node IDs of overset BC nodes
-    num_verts_.size(),  // Number of topologies in this mesh block
-    num_verts_.data(),  // Number of vertices per topology
-    num_cells_.data(),  // Number of cells for each topology
-    tioga_conn_,        // Element node connectivity information
-    elemid_map_.data(), // Global ID for the element array
-    nodeid_map_.data()  // Global ID for the node array
+    meshtag_,                        // Unique body tag
+    num_nodes_,                      // Number of nodes in this mesh block
+    bdata_.xyz_.h_view.data(),       // Nodal coordinates
+    iblank_.data(),                  // iblank array corresponding to nodes
+    num_wallbc_,                     // Number of Wall BC nodes
+    num_ovsetbc_,                    // Number of overset BC nodes
+    bdata_.wallIDs_.h_view.data(),   // Node IDs of wall BC nodes
+    bdata_.ovsetIDs_.h_view.data(),  // Node IDs of overset BC nodes
+    bdata_.num_verts_.h_view.size(), // Number of topologies in this mesh block
+    bdata_.num_verts_.h_view.data(), // Number of vertices per topology
+    bdata_.num_cells_.h_view.data(), // Number of cells for each topology
+    tioga_conn_,                     // Element node connectivity information
+    bdata_.cell_gid_.h_view.data(),  // Global ID for the element array
+    bdata_.node_gid_.h_view.data()   // Global ID for the node array
   );
   // Indicate that we want element IBLANK information returned
   tg.set_cell_iblank(meshtag_, iblank_cell_.data());
