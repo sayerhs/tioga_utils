@@ -89,6 +89,7 @@ void TiogaBlock::update_coords()
   VectorFieldType* coords = meta_.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, coordsName_);
 
+  auto& ngp_xyz = bdata_.xyz_.h_view;
   int ip = 0;
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
@@ -96,11 +97,14 @@ void TiogaBlock::update_coords()
 
       double* pt = stk::mesh::field_data(*coords, node);
       for (int i=0; i < ndim_; i++) {
+        ngp_xyz(ip * ndim_ + i) = pt[i];
         xyz_[ip * ndim_ + i] = pt[i];
       }
       ip++;
     }
   }
+
+  bdata_.xyz_.sync_to_device();
 }
 
 void
@@ -236,11 +240,16 @@ void TiogaBlock::process_nodes()
     iblank_.resize(num_nodes_, 1);
     node_res_.resize(num_nodes_, 1.0*meshtag_);
 
+    bdata_.xyz_.init("xyz", ndim_ * num_nodes_);
+    bdata_.iblank_.init("iblank_node", num_nodes_);
+    bdata_.node_res_.init("node_res", num_nodes_);
+
     // Should we clear node_map_???
     // node_map_.clear();
     nodeid_map_.resize(num_nodes_);
   }
 
+  auto& ngp_xyz = bdata_.xyz_.h_view;
   int ip =0; // Index into the xyz_ array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
@@ -250,12 +259,17 @@ void TiogaBlock::process_nodes()
       double* pt = stk::mesh::field_data(*coords, node);
       for (int i=0; i < ndim_; i++) {
         xyz_[ip * ndim_ + i] = pt[i];
+        ngp_xyz(ip * ndim_ + i) = pt[i];
       }
       node_map_[nid] = ip + 1; // TIOGA uses 1-based indexing
       nodeid_map_[ip] = nid;
       ip++;
     }
   }
+
+  bdata_.xyz_.sync_to_device();
+  Kokkos::deep_copy(bdata_.iblank_.h_view, 1);
+  Kokkos::deep_copy(bdata_.iblank_.d_view, 1);
 }
 
 void TiogaBlock::process_wallbc()
@@ -271,16 +285,21 @@ void TiogaBlock::process_wallbc()
   if (is_init_ || (ncount != num_wallbc_)) {
     num_wallbc_ = ncount;
     wallIDs_.resize(num_wallbc_);
+
+    bdata_.wallIDs_.init("wall_ids", num_wallbc_);
   }
 
+  auto& wallids = bdata_.wallIDs_.h_view;
   int ip = 0; // Index into the wallIDs array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
       stk::mesh::Entity node = (*b)[in];
       stk::mesh::EntityId nid = bulk_.identifier(node);
+      wallids(ip) = node_map_[nid];
       wallIDs_[ip++] = node_map_[nid];
     }
   }
+  bdata_.wallIDs_.sync_to_device();
 }
 
 void TiogaBlock::process_ovsetbc()
@@ -296,16 +315,21 @@ void TiogaBlock::process_ovsetbc()
   if (is_init_ || (ncount != num_ovsetbc_)) {
     num_ovsetbc_ = ncount;
     ovsetIDs_.resize(num_ovsetbc_);
+
+    bdata_.ovsetIDs_.init("overset_ids", num_ovsetbc_);
   }
 
+  auto& ovsetids = bdata_.ovsetIDs_.h_view;
   int ip = 0; // Index into ovsetIDs array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
       stk::mesh::Entity node = (*b)[in];
       stk::mesh::EntityId nid = bulk_.identifier(node);
+      ovsetids(ip) = node_map_[nid];
       ovsetIDs_[ip++] = node_map_[nid];
     }
   }
+  bdata_.ovsetIDs_.sync_to_device();
 }
 
 void TiogaBlock::process_elements()
@@ -334,6 +358,10 @@ void TiogaBlock::process_elements()
   auto ntypes = conn_map_.size();
   num_verts_.resize(ntypes);
   num_cells_.resize(ntypes);
+  {
+      bdata_.num_verts_.init("num_verts_per_etype", ntypes);
+      bdata_.num_cells_.init("num_cells_per_etype", ntypes);
+  }
   connect_.resize(ntypes);
   if (tioga_conn_)
     delete[] tioga_conn_;
@@ -349,6 +377,11 @@ void TiogaBlock::process_elements()
     num_verts_[idx] = kv.first;
     num_cells_[idx] = kv.second;
     connect_[idx].resize(kv.first * kv.second);
+    {
+        bdata_.num_verts_.h_view[idx] = kv.first;
+        bdata_.num_cells_.h_view[idx] = kv.second;
+        bdata_.connect_[idx].init("cell_" + std::to_string(kv.first), kv.first * kv.second);
+    }
     conn_ids[kv.first] = idx;
     conn_offsets[kv.first] = 0;
     idx++;
@@ -359,6 +392,10 @@ void TiogaBlock::process_elements()
   elemid_map_.resize(tot_elems);
   iblank_cell_.resize(tot_elems);
   cell_res_.resize(cres_count, 1.0*meshtag_);
+  {
+      bdata_.iblank_cell_.init("iblank_cell", tot_elems);
+      bdata_.cell_res_.init("cell_res", tot_elems);
+  }
 
   // 4. Create connectivity map based on local node index (xyz_)
   int ep = 0;
@@ -373,6 +410,7 @@ void TiogaBlock::process_elements()
       const stk::mesh::Entity* enodes = b->begin_nodes(in);
       for (int i=0; i < npe; i++) {
         const stk::mesh::EntityId nid = bulk_.identifier(enodes[i]);
+        bdata_.connect_[idx].h_view(offset) = node_map_[nid];
         connect_[idx][offset++] = node_map_[nid];
       }
     }
@@ -383,6 +421,9 @@ void TiogaBlock::process_elements()
   for(size_t i=0; i<ntypes; i++) {
     tioga_conn_[i] = connect_[i].data();
   }
+
+  Kokkos::deep_copy(bdata_.iblank_cell_.h_view, 1);
+  Kokkos::deep_copy(bdata_.iblank_cell_.d_view, 1);
 }
 
 void TiogaBlock::register_block(TIOGA::tioga& tg)

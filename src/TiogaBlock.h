@@ -12,8 +12,11 @@
 #include <vector>
 #include <memory>
 
+#include "ngp_utils/NgpTypes.h"
+
 namespace TIOGA {
-    class tioga;
+class tioga;
+class MeshBlockInfo;
 }
 
 namespace tioga_nalu {
@@ -21,6 +24,23 @@ namespace tioga_nalu {
 typedef stk::mesh::Field<double, stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double, stk::mesh::SimpleArrayTag>  GenericFieldType;
+
+struct NgpTiogaBlock
+{
+    static constexpr int max_vertex_types = 4;
+
+    ngp::NgpDualArray<double*> xyz_;
+    ngp::NgpDualArray<double*> node_res_;
+    ngp::NgpDualArray<double*> cell_res_;
+    ngp::NgpDualArray<double*> qnode_;
+    ngp::NgpDualArray<int*> iblank_;
+    ngp::NgpDualArray<int*> iblank_cell_;
+    ngp::NgpDualArray<int*> wallIDs_;
+    ngp::NgpDualArray<int*> ovsetIDs_;
+    ngp::NgpDualArray<int*> num_verts_;
+    ngp::NgpDualArray<int*> num_cells_;
+    ngp::NgpDualArray<int*> connect_[max_vertex_types];
+};
 
 /**
  * Interface to convert STK Mesh Part(s) to TIOGA blocks.
@@ -174,6 +194,8 @@ private:
 
   //! Overset BC parts
   stk::mesh::PartVector ovsetParts_;
+
+  NgpTiogaBlock bdata_;
 
   //! Coordinates for this mesh block in TIOGA format
   std::vector<double> xyz_;
