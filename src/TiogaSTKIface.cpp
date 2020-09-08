@@ -462,18 +462,25 @@ void TiogaSTKIface::register_solution(const int nvars)
 void TiogaSTKIface::update_solution(const int nvars)
 {
     auto tmon = get_timer("TiogaSTKIface::update_solution");
-    double maxNorm = -1.0e20;
-    double g_maxNorm = -1.0e20;
+    double maxNormField, maxNormFringe = -1.0e20;
+    double g_maxNormField, g_maxNormFringe = -1.0e20;
     for (auto& tb: blocks_)
     {
-        double norm = tb->update_solution(nvars);
-        maxNorm = std::max(norm, maxNorm);
+        double normField = tb->update_solution(nvars, true);
+        maxNormField = std::max(normField, maxNormField);
+
+        double normFringe = tb->update_solution(nvars, false);
+        maxNormFringe = std::max(normFringe, maxNormFringe);
     }
 
-    stk::all_reduce_max(bulk_.parallel(), &maxNorm, &g_maxNorm, 1);
-    if (bulk_.parallel_rank() == 0)
-        std::cout << "TIOGA interpolation error (max L2 norm) for STK mesh: "
-                  << g_maxNorm << std::endl;
+    stk::all_reduce_max(bulk_.parallel(), &maxNormField, &g_maxNormField, 1);
+    stk::all_reduce_max(bulk_.parallel(), &maxNormFringe, &g_maxNormFringe, 1);
+    if (bulk_.parallel_rank() == 0){
+      std::cout << "TIOGA interpolation error (max L2 norm) for STK mesh on field points: "
+                << g_maxNormField << std::endl;
+      std::cout << "TIOGA interpolation error (max L2 norm) for STK mesh on fringe points: "
+                << g_maxNormFringe << std::endl;
+    }
 }
 
 }  // tioga

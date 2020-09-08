@@ -476,7 +476,7 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
     tg.register_unstructured_solution(meshtag_, qsol_.data(),nvars,0);
 }
 
-double TiogaBlock::update_solution(const int nvars)
+double TiogaBlock::update_solution(const int nvars, bool isField)
 {
     double rnorm = 0.0;
     if (num_nodes_ < 1) return rnorm;
@@ -484,16 +484,27 @@ double TiogaBlock::update_solution(const int nvars)
 
     auto* qvars = meta_.get_field<GenericFieldType>(
         stk::topology::NODE_RANK, "qvars");
+    ScalarFieldType* ibf =
+      meta_.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "iblank");
     stk::mesh::Selector sel = stk::mesh::selectUnion(blkParts_)
         & (meta_.locally_owned_part() | meta_.globally_shared_part());
     const auto& bkts = bulk_.get_buckets(
         stk::topology::NODE_RANK, sel);
 
+    int counter = 0;
     int ip = 0;
     for (auto b: bkts) {
         for (size_t in=0; in < b->size(); ++in) {
             const auto node = (*b)[in];
             double* qq = stk::mesh::field_data(*qvars, node);
+            double ibval = *stk::mesh::field_data(*ibf, node);
+
+            if ((isField && (ibval < 0.5)) || (!isField && (ibval > -0.5))) {
+                ip += nvars;
+                continue;
+            }
+            counter++;
+
             for (int i=0; i < nvars; ++i) {
                 const double diff = qsol_[ip] - qq[i];
                 rnorm += diff * diff;
@@ -502,7 +513,7 @@ double TiogaBlock::update_solution(const int nvars)
         }
     }
 
-    rnorm /= static_cast<double>(num_nodes_ * nvars);
+    rnorm /= static_cast<double>(counter * nvars);
     return std::sqrt(rnorm);
 }
 

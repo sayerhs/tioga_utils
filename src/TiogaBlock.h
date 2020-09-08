@@ -102,7 +102,7 @@ public:
   void register_solution(TIOGA::tioga&, const int);
 
   //! Update solution field and return error norm
-  double update_solution(const int);
+  double update_solution(const int, const bool);
 
   // Accessors
 
