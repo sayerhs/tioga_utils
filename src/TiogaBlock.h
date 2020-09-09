@@ -102,7 +102,7 @@ public:
   void register_solution(TIOGA::tioga&, const int);
 
   //! Update solution field and return error norm
-  double update_solution(const int, const bool);
+  double update_solution(const int, const int, const bool, const int);
 
   // Accessors
 
@@ -150,6 +150,11 @@ private:
   /** Generate the element data structure and connectivity information to send to TIOGA
    */
   void process_elements();
+
+  /** Compute analytical solution based on solution type
+   */
+  double get_sol(const double, const double, const double,
+      const int, const int);
 
   //! Reference to the STK Mesh MetaData object
   stk::mesh::MetaData& meta_;

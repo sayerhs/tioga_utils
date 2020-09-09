@@ -476,12 +476,14 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
     tg.register_unstructured_solution(meshtag_, qsol_.data(),nvars,0);
 }
 
-double TiogaBlock::update_solution(const int nvars, bool isField)
+double TiogaBlock::update_solution(const int ncellVars, const int nnodeVars, bool isField, const int sol)
 {
     double rnorm = 0.0;
     if (num_nodes_ < 1) return rnorm;
     auto tmon = get_timer("TiogaBlock::update_solution");
 
+    VectorFieldType* coords = meta_.get_field<VectorFieldType>(
+        stk::topology::NODE_RANK, coordsName_);
     auto* qvars = meta_.get_field<GenericFieldType>(
         stk::topology::NODE_RANK, "qvars");
     ScalarFieldType* ibf =
@@ -498,23 +500,58 @@ double TiogaBlock::update_solution(const int nvars, bool isField)
             const auto node = (*b)[in];
             double* qq = stk::mesh::field_data(*qvars, node);
             double ibval = *stk::mesh::field_data(*ibf, node);
+            const double* xyz = stk::mesh::field_data(*coords, node);
 
             if ((isField && (ibval < 0.5)) || (!isField && (ibval > -0.5))) {
-                ip += nvars;
+                ip += ncellVars + nnodeVars;
                 continue;
             }
             counter++;
 
-            for (int i=0; i < nvars; ++i) {
-                const double diff = qsol_[ip] - qq[i];
+            for (int i=0; i < ncellVars; ++i) {
+                double qref = get_sol(xyz[0], xyz[1], xyz[2], i, sol);
+                const double diff = qsol_[ip] - qref;
                 rnorm += diff * diff;
                 qq[i] = qsol_[ip++];
+            }
+
+            const int ii = ncellVars;
+            for (int i=0; i < nnodeVars; ++i) {
+                double qref = get_sol(xyz[0], xyz[1], xyz[2], i, sol);
+                const double diff = qsol_[ip] - qref;
+                rnorm += diff * diff;
+                qq[i + ii] = qsol_[ip++];
             }
         }
     }
 
-    rnorm /= static_cast<double>(counter * nvars);
+    rnorm /= static_cast<double>(counter * (ncellVars + nnodeVars));
     return std::sqrt(rnorm);
+}
+
+double TiogaBlock::get_sol(const double x, const double y, const double z,
+    const int n, const int sol)
+{
+    double val = 0.0;
+
+    switch (sol) {
+        case 0: { // constant
+            val = 1.0 * ((n + 1) << n);
+            break;
+        }
+        case 1: { // linear
+            double xfac = 1.0 * ((n + 1) << n);
+            double yfac = 1.0 * ((n + 2) << n);
+            double zfac = 1.0 * ((n + 3) << n);
+            val = xfac * x + yfac * y +  zfac * z;
+            break;
+        }
+        default :
+            throw std::runtime_error("TiogaBlock: Invalid solution request for STK mesh: " +
+                std::to_string(sol));
+    }
+
+    return val;
 }
 
 

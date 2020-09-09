@@ -88,7 +88,7 @@ public:
   void register_solution(const int);
 
   //! Update solution field
-  void update_solution(const int);
+  void update_solution(const int, const int, const int, const int);
 
   /** Return the TIOGA interface object */
   TIOGA::tioga& tioga_iface()

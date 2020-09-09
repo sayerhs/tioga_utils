@@ -55,6 +55,8 @@ void TiogaAMRIface::load(const YAML::Node& node)
 
     if (node["field"]) {
         const auto& fnode = node["field"];
+        get_optional(fnode, "stk_sol", m_stk_sol);
+        get_optional(fnode, "amr_sol", m_amr_sol);
         get_optional(fnode, "num_ghost", m_num_ghost);
         get_optional(fnode, "num_cell_vars", m_ncell_vars);
         get_optional(fnode, "num_node_vars", m_nnode_vars);
@@ -184,25 +186,21 @@ void TiogaAMRIface::register_mesh(TIOGA::tioga& tg, const bool verbose)
 void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
 {
     if (num_total_vars() < 1) return;
+    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::register_solution");
 
     init_var(*m_qcell, m_ncell_vars, 0.5);
     init_var(*m_qnode, m_nnode_vars, 0.0);
-    auto tmon = tioga_nalu::get_timer("TiogaAMRIface::register_solution");
     const int nlevels = m_mesh->repo().num_active_levels();
     int ipatch_cell = 0;
     int ipatch_node = 0;
 
     for (int lev=0; lev < nlevels; ++lev) {
         if (m_ncell_vars > 0) {
-            auto& qref = m_mesh->repo().get_field("qcell_ref");
             auto& qfab = (*m_qcell)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
                 tg.register_amr_solution(ipatch_cell++, qarr.dataPtr(), m_ncell_vars, 0);
             }
-            auto& qref_fab = qref(lev);
-            amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
-                                  qref.num_comp(), qref.num_grow());
         }
         if (m_nnode_vars > 0) {
             auto& qfab = (*m_qnode)(lev);
@@ -210,10 +208,6 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
                 auto& qarr = qfab[mfi];
                 tg.register_amr_solution(ipatch_node++, qarr.dataPtr(), 0, m_nnode_vars);
             }
-            auto& qref = m_mesh->repo().get_field("qnode_ref");
-            auto& qref_fab = qref(lev);
-            amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
-                                  qref.num_comp(), qref.num_grow());
         }
     }
 }
@@ -229,10 +223,15 @@ void TiogaAMRIface::update_solution(const bool isField)
     if (num_total_vars() < 1) return;
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::update_solution");
     const int nlevels = m_mesh->repo().num_active_levels();
+    int sol = isField ? m_amr_sol : m_stk_sol;
 
     amrex::Real rnorm = 0.0;
     int counter = 0;
     for (int lev=0; lev < nlevels; ++lev) {
+        const auto& geom = m_mesh->Geom(lev);
+        const auto* problo = geom.ProbLo();
+        const auto* dx = geom.CellSize();
+
         if (m_ncell_vars > 0) {
             const int ncomp = m_ncell_vars;
             auto& qref = m_mesh->repo().get_field("qcell_ref");
@@ -250,9 +249,14 @@ void TiogaAMRIface::update_solution(const bool isField)
                     if ((isField && (ibcell_arr(i,j,k,0) == 1)) ||
                         (!isField && (ibcell_arr(i,j,k,0) == -1))) {
                         counter += ncomp;
+
+                        const amrex::Real x = problo[0] + (i + 0.5) * dx[0];
+                        const amrex::Real y = problo[1] + (j + 0.5) * dx[1];
+                        const amrex::Real z = problo[2] + (k + 0.5) * dx[2];
+
                         for (int n = 0; n < ncomp; ++n) {
-                            amrex::Real diff =
-                                qarr(i, j, k, n) - qref_arr(i, j, k, n);
+                            double qref = get_sol(x, y, z, n, sol);
+                            amrex::Real diff = qarr(i, j, k, n) - qref;
                             rnorm += diff * diff;
                         }
                     }
@@ -276,9 +280,14 @@ void TiogaAMRIface::update_solution(const bool isField)
                     if ((isField && (ibnode_arr(i,j,k,0) == 1)) ||
                         (!isField && (ibnode_arr(i,j,k,0) == -1))) {
                         counter += ncomp;
+
+                        const amrex::Real x = problo[0] + i * dx[0];
+                        const amrex::Real y = problo[1] + j * dx[1];
+                        const amrex::Real z = problo[2] + k * dx[2];
+
                         for (int n = 0; n < ncomp; ++n) {
-                            amrex::Real diff =
-                                qarr(i, j, k, n) - qref_arr(i, j, k, n);
+                            double qref = get_sol(x, y, z, n, sol);
+                            amrex::Real diff = qarr(i, j, k, n) - qref;
                             rnorm += diff * diff;
                         }
                     }
@@ -376,14 +385,35 @@ void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real of
                 const amrex::Real z = problo[2] + (k + offset) * dx[2];
 
                 for (int n = 0; n < nvars; ++n) {
-                    const amrex::Real xfac = 1.0 * ((n + 1) << n);
-                    const amrex::Real yfac = 1.0 * ((n + 2) << n);
-                    const amrex::Real zfac = 1.0 * ((n + 3) << n);
-                    qarr(i, j, k, n) = xfac * x + yfac * y +  zfac * z;
+                    qarr(i, j, k, n) = get_sol(x, y, z, n, m_amr_sol);
                 }
             });
         }
     }
+}
+
+double TiogaAMRIface::get_sol(const double x, const double y, const double z,
+    const int n, const int sol)
+{
+    double val = 0.0;
+
+    switch (sol) {
+        case 0: { // constant
+            val = 1.0 * ((n + 1) << n);
+            break;
+        }
+        case 1: { // linear
+            double xfac = 1.0 * ((n + 1) << n);
+            double yfac = 1.0 * ((n + 2) << n);
+            double zfac = 1.0 * ((n + 3) << n);
+            val = xfac * x + yfac * y +  zfac * z;
+            break;
+        }
+        default :
+            amrex::Print() << "Invalid solution request for AMR mesh: " << sol << std::endl;
+    }
+
+    return val;
 }
 
 } // namespace tioga_amr

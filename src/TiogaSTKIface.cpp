@@ -459,17 +459,18 @@ void TiogaSTKIface::register_solution(const int nvars)
         tb->register_solution(tg_, nvars);
 }
 
-void TiogaSTKIface::update_solution(const int nvars)
+void TiogaSTKIface::update_solution(const int ncellVars, const int nnodeVars,
+    const int fieldSol, const int fringeSol)
 {
     auto tmon = get_timer("TiogaSTKIface::update_solution");
     double maxNormField, maxNormFringe = -1.0e20;
     double g_maxNormField, g_maxNormFringe = -1.0e20;
     for (auto& tb: blocks_)
     {
-        double normField = tb->update_solution(nvars, true);
+        double normField = tb->update_solution(ncellVars, nnodeVars, true, fieldSol);
         maxNormField = std::max(normField, maxNormField);
 
-        double normFringe = tb->update_solution(nvars, false);
+        double normFringe = tb->update_solution(ncellVars, nnodeVars, false, fringeSol);
         maxNormFringe = std::max(normFringe, maxNormFringe);
     }
 

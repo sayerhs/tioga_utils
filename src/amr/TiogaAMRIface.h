@@ -40,8 +40,14 @@ public:
 
     int num_node_vars() const { return m_nnode_vars; }
 
+    int stk_sol() const { return m_stk_sol; }
+
+    int amr_sol() const { return m_amr_sol; }
+
 private:
     void init_var(Field&, const int nvars, const amrex::Real offset);
+
+    double get_sol(const double, const double, const double, const int, const int);
 
     void update_solution(const bool isField);
 
@@ -71,6 +77,12 @@ private:
 
     //! Reals per grid for TIOGA call
     static constexpr int reals_per_grid{6};
+
+    //! Analytical solution profile for stk meshes
+    int m_stk_sol{1};
+
+    //! Analytical solution profile for amr meshes
+    int m_amr_sol{1};
 };
 
 }

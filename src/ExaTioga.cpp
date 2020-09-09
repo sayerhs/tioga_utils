@@ -50,7 +50,15 @@ void ExaTioga::init_stk(const YAML::Node& node)
 {
     m_stk.num_cell_vars() = m_amr.num_cell_vars();
     m_stk.num_node_vars() = m_amr.num_node_vars();
+    m_stk.field_sol() = m_amr.stk_sol();
+    m_stk.fringe_sol() = m_amr.amr_sol();
     m_stk.load_and_initialize_all(node["nalu_wind"]);
+
+    if(m_amr.stk_sol() != m_amr.amr_sol()) {
+        amrex::Print() << "WARNING: Analytical solution set for STK mesh and AMR mesh is not same. "
+                       << "May result in incorrect error norm computations."
+                       << std::endl;
+    }
 }
 
 void ExaTioga::execute(const YAML::Node& doc)

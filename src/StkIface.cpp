@@ -1,5 +1,4 @@
 #include "StkIface.h"
-#include "TiogaBlock.h"
 #include "Timer.h"
 
 namespace tioga_nalu {
@@ -165,26 +164,41 @@ void StkIface::init_vars()
             const double* xyz = stk::mesh::field_data(*coords, node);
             double* qq = stk::mesh::field_data(*qvars, node);
 
-            if (ncell_vars_ > 0) {
-                for (int n=0; n < ncell_vars_; ++n) {
-                    const double xfac = 1.0 * ((n + 1) << n);
-                    const double yfac = 1.0 * ((n + 2) << n);
-                    const double zfac = 1.0 * ((n + 3) << n);
-                    qq[n] = xfac * xyz[0] + yfac * xyz[1] + zfac * xyz[2];
-                }
+            for (int n=0; n < ncell_vars_; ++n) {
+                qq[n] = get_sol(xyz[0], xyz[1], xyz[2], n, field_sol_);
             }
 
-            if (nnode_vars_ > 0) {
-                const int ii = ncell_vars_;
-                for (int n=0; n < nnode_vars_; ++n) {
-                    const double xfac = 1.0 * ((n + 1) << n);
-                    const double yfac = 1.0 * ((n + 2) << n);
-                    const double zfac = 1.0 * ((n + 3) << n);
-                    qq[ii + n] = xfac * xyz[0] + yfac * xyz[1] + zfac * xyz[2];
-                }
+            const int ii = ncell_vars_;
+            for (int n=0; n < nnode_vars_; ++n) {
+                qq[ii + n] = get_sol(xyz[0], xyz[1], xyz[2], n, field_sol_);
             }
         }
     }
+}
+
+double StkIface::get_sol(const double x, const double y, const double z,
+    const int n, const int sol)
+{
+    double val = 0.0;
+
+    switch (sol) {
+        case 0: { // constant
+            val = 1.0 * ((n + 1) << n);
+            break;
+        }
+        case 1: { // linear
+            double xfac = 1.0 * ((n + 1) << n);
+            double yfac = 1.0 * ((n + 2) << n);
+            double zfac = 1.0 * ((n + 3) << n);
+            val = xfac * x + yfac * y +  zfac * z;
+            break;
+        }
+        default :
+            throw std::runtime_error("StkIface: Invalid solution request for STK mesh: " +
+                std::to_string(sol));
+    }
+
+    return val;
 }
 
 } // namespace tioga_nalu

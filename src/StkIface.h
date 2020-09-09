@@ -48,7 +48,7 @@ public:
 
     void update_solution()
     {
-        tg_->update_solution(num_vars());
+        tg_->update_solution(num_cell_vars(), num_node_vars(), field_sol_, fringe_sol_);
     }
 
     void move_mesh(int nt)
@@ -81,8 +81,15 @@ public:
 
     const int num_vars() const { return ncell_vars_ + nnode_vars_; }
 
+    int& field_sol() { return field_sol_; }
+
+    int& fringe_sol() { return fringe_sol_; }
+
 private:
     void init_vars();
+
+    double get_sol(const double, const double, const double,
+        const int, const int);
 
     stk::ParallelMachine comm_;
     stk::mesh::MetaData meta_;
@@ -94,6 +101,9 @@ private:
 
     int ncell_vars_{0};
     int nnode_vars_{0};
+
+    int field_sol_{1};
+    int fringe_sol_{1};
 
     bool has_motion_{false};
 };
