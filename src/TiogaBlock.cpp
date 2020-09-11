@@ -525,8 +525,11 @@ double TiogaBlock::update_solution(const int ncellVars, const int nnodeVars, boo
         }
     }
 
-    rnorm /= static_cast<double>(counter * (ncellVars + nnodeVars));
-    return std::sqrt(rnorm);
+    if (counter > 0) {
+        rnorm /= static_cast<double>(counter * (ncellVars + nnodeVars));
+        rnorm = std::sqrt(rnorm);
+    }
+    return rnorm;
 }
 
 double TiogaBlock::get_sol(const double x, const double y, const double z,

@@ -296,8 +296,10 @@ void TiogaAMRIface::update_solution(const bool isField)
         }
     }
 
-    rnorm /= static_cast<amrex::Real>(counter);
-    rnorm = std::sqrt(rnorm);
+    if(counter > 0) {
+        rnorm /= static_cast<amrex::Real>(counter);
+        rnorm = std::sqrt(rnorm);
+    }
     amrex::ParallelDescriptor::ReduceRealMax(
         rnorm, amrex::ParallelDescriptor::IOProcessorNumber());
     if (isField) {
