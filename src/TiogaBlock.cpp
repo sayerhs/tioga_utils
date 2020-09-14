@@ -2,6 +2,9 @@
 #include "TiogaBlock.h"
 #include "Timer.h"
 #include "ngp_utils/NgpLoopUtils.h"
+#include "ngp_utils/NgpReduceUtils.h"
+
+#include "stk_util/parallel/ParallelReduce.hpp"
 
 #include <numeric>
 #include <iostream>
@@ -127,18 +130,43 @@ TiogaBlock::update_iblanks()
       & (meta_.locally_owned_part() | meta_.globally_shared_part());
 
   using Traits = ngp::NGPMeshTraits<>;
+  using CounterType = Kokkos::Sum<ngp::ArrayInt3>;
+  typename CounterType::value_type counter;
+  CounterType ngp_counter(counter);
   // TODO: move to device view
-  auto& iblarr = bdata_.iblank_.h_view;
-  auto& nidmap = bdata_.eid_map_.h_view;
+  bdata_.iblank_.sync_to_device();
+  auto& iblarr = bdata_.iblank_.d_view;
+  auto& nidmap = bdata_.eid_map_.d_view;
   auto& iblank_ngp = stk::mesh::get_updated_ngp_field<double>(*ibf);
-  ngp::run_entity_algorithm(
+  ngp::run_entity_par_reduce(
       "update_iblanks", bulk_.get_updated_ngp_mesh(),
       stk::topology::NODE_RANK, mesh_selector,
-      [&](const typename Traits::MeshIndex& mi) {
+      KOKKOS_LAMBDA(
+          const typename Traits::MeshIndex& mi,
+          typename CounterType::value_type& pctr) {
           auto node = (*mi.bucket)[mi.bucketOrd];
           const auto idx = nidmap(node.local_offset()) - 1;
-          iblank_ngp.get(mi, 0) = iblarr(idx);
-      });
+          const auto ibval = iblarr(idx);
+          iblank_ngp.get(mi, 0) = ibval;
+
+          if(ibval > 0.5) {
+              ++pctr.array_[0];
+          } else if (ibval < -0.5) {
+              ++pctr.array_[1];
+          } else {
+              ++pctr.array_[2];
+          }
+      }, ngp_counter);
+
+  int gcounter[3] = {0, 0, 0};
+  stk::all_reduce_sum(bulk_.parallel(), counter.array_, gcounter, 3);
+  if (bulk_.parallel_rank() == 0) {
+      std::cout << "STK IBLANK " << meshtag_
+                << ": field=" << gcounter[0]
+                << "; fringe=" << gcounter[1]
+                << "; hole=" << gcounter[2]
+                << std::endl;
+  }
 }
 
 void TiogaBlock::update_iblank_cell()
@@ -152,8 +180,9 @@ void TiogaBlock::update_iblank_cell()
 
   using Traits = ngp::NGPMeshTraits<>;
   // TODO: move to device view
-  auto& iblarr = bdata_.iblank_cell_.h_view;
-  auto& eidmap = bdata_.eid_map_.h_view;
+  bdata_.iblank_cell_.sync_to_device();
+  auto& iblarr = bdata_.iblank_cell_.d_view;
+  auto& eidmap = bdata_.eid_map_.d_view;
   auto& iblank_ngp = stk::mesh::get_updated_ngp_field<double>(*ibf);
   ngp::run_entity_algorithm(
       "update_iblanks", bulk_.get_updated_ngp_mesh(),
@@ -411,6 +440,7 @@ void TiogaBlock::process_elements()
     tioga_conn_[i] = bdata_.connect_[i].h_view.data();
   }
 
+  bdata_.eid_map_.sync_to_device();
   bdata_.cell_gid_.sync_to_device();
   Kokkos::deep_copy(bdata_.iblank_cell_.h_view, 1);
   Kokkos::deep_copy(bdata_.iblank_cell_.d_view, 1);
