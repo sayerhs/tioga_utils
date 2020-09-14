@@ -149,17 +149,20 @@ void TiogaBlock::update_iblank_cell()
 
   stk::mesh::Selector mesh_selector = meta_.locally_owned_part() &
     stk::mesh::selectUnion(blkParts_);
-  const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
-    stk::topology::ELEM_RANK, mesh_selector);
 
-  auto& iblank_cell = bdata_.iblank_cell_.h_view;
-  int ip = 0;
-  for (auto b: mbkts) {
-    double* ib = stk::mesh::field_data(*ibf, *b);
-    for(size_t in=0; in < b->size(); in++) {
-      ib[in] = iblank_cell(ip++);
-    }
-  }
+  using Traits = ngp::NGPMeshTraits<>;
+  // TODO: move to device view
+  auto& iblarr = bdata_.iblank_cell_.h_view;
+  auto& eidmap = bdata_.eid_map_.h_view;
+  auto& iblank_ngp = stk::mesh::get_updated_ngp_field<double>(*ibf);
+  ngp::run_entity_algorithm(
+      "update_iblanks", bulk_.get_updated_ngp_mesh(),
+      stk::topology::ELEM_RANK, mesh_selector,
+      [&](const typename Traits::MeshIndex& mi) {
+          auto elem = (*mi.bucket)[mi.bucketOrd];
+          const auto idx = eidmap(elem.local_offset()) - 1;
+          iblank_ngp.get(mi, 0) = iblarr(idx);
+      });
 }
 
 void TiogaBlock::get_donor_info(TIOGA::tioga& tg, stk::mesh::EntityProcVec& egvec)
