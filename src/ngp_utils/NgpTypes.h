@@ -2,6 +2,7 @@
 #define NGPTYPES_H
 
 #include "stk_mesh/base/NgpMesh.hpp"
+#include "stk_mesh/base/GetNgpField.hpp"
 
 namespace tioga_nalu {
 namespace ngp {
@@ -62,6 +63,7 @@ struct NGPMeshTraits
 {
     using TeamPolicy = Kokkos::TeamPolicy<typename Mesh::MeshExecSpace,
                                           stk::mesh::ScheduleType>;
+    using TeamHandleType = typename TeamPolicy::member_type;
     using ShmemType = typename Mesh::MeshExecSpace::scratch_memory_space;
     using MeshIndex = typename Mesh::MeshIndex;
 };
