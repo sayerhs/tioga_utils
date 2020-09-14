@@ -189,12 +189,6 @@ private:
 
   NgpTiogaBlock bdata_;
 
-  /** Connectivity data structure
-   *
-   *  A two-dimensional list of size (num_elems, num_elems * nodes_per_elem)
-   */
-  std::vector<std::vector<int>> connect_;
-
   /** Connectivity map.
    *
    *  This map holds the number of elements present per topology type (npe ->

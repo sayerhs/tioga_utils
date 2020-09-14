@@ -352,7 +352,6 @@ void TiogaBlock::process_elements()
   bdata_.num_verts_.init("num_verts_per_etype", ntypes);
   bdata_.num_cells_.init("num_cells_per_etype", ntypes);
 
-  connect_.resize(ntypes);
   if (tioga_conn_)
     delete[] tioga_conn_;
   tioga_conn_ = new int*[ntypes];
@@ -365,7 +364,6 @@ void TiogaBlock::process_elements()
   int cres_count = 0;
   int tot_elems = 0;
   for (auto kv: conn_map_) {
-    connect_[idx].resize(kv.first * kv.second);
     tot_elems += kv.second;
     {
         bdata_.num_verts_.h_view[idx] = kv.first;
@@ -396,8 +394,7 @@ void TiogaBlock::process_elements()
       const stk::mesh::Entity* enodes = b->begin_nodes(in);
       for (int i=0; i < npe; i++) {
         const stk::mesh::EntityId nid = bulk_.identifier(enodes[i]);
-        bdata_.connect_[idx].h_view(offset) = nidmap(enodes[i].local_offset());
-        connect_[idx][offset++] = nidmap(enodes[i].local_offset());
+        bdata_.connect_[idx].h_view(offset++) = nidmap(enodes[i].local_offset());
       }
     }
     conn_offsets[npe] = offset;
@@ -405,7 +402,7 @@ void TiogaBlock::process_elements()
 
   // TIOGA expects a ptr-to-ptr data structure for connectivity
   for(size_t i=0; i<ntypes; i++) {
-    tioga_conn_[i] = connect_[i].data();
+    tioga_conn_[i] = bdata_.connect_[i].h_view.data();
   }
 
   bdata_.cell_gid_.sync_to_device();
