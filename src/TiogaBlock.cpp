@@ -1,6 +1,7 @@
 
 #include "TiogaBlock.h"
 #include "Timer.h"
+#include "ngp_utils/NgpLoopUtils.h"
 
 #include <numeric>
 #include <iostream>
@@ -124,19 +125,20 @@ TiogaBlock::update_iblanks()
 
   stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_)
       & (meta_.locally_owned_part() | meta_.globally_shared_part());
-  const stk::mesh::BucketVector& mbkts =
-    bulk_.get_buckets(stk::topology::NODE_RANK, mesh_selector);
 
-  auto& iblank = bdata_.iblank_.h_view;
-  int ip = 0;
-  for (auto b : mbkts) {
-    double* ib = stk::mesh::field_data(*ibf, *b);
-    for (size_t in = 0; in < b->size(); in++) {
-      // stk::mesh::Entity node = (*b)[in];
-      // stk::mesh::EntityId nid = bulk_.identifier(node);
-      ib[in] = iblank(ip++);
-    }
-  }
+  using Traits = ngp::NGPMeshTraits<>;
+  // TODO: move to device view
+  auto& iblarr = bdata_.iblank_.h_view;
+  auto& nidmap = bdata_.eid_map_.h_view;
+  auto& iblank_ngp = stk::mesh::get_updated_ngp_field<double>(*ibf);
+  ngp::run_entity_algorithm(
+      "update_iblanks", bulk_.get_updated_ngp_mesh(),
+      stk::topology::NODE_RANK, mesh_selector,
+      [&](const typename Traits::MeshIndex& mi) {
+          auto node = (*mi.bucket)[mi.bucketOrd];
+          const auto idx = nidmap(node.local_offset()) - 1;
+          iblank_ngp.get(mi, 0) = iblarr(idx);
+      });
 }
 
 void TiogaBlock::update_iblank_cell()
