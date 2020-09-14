@@ -41,6 +41,8 @@ struct NgpDualArray
           h_view(Kokkos::create_mirror_view(d_view))
     {}
 
+    size_t size() const { return d_view.size(); }
+
     void init(const std::string& label, const size_t len)
     {
         d_view = ArrayType(label, len);

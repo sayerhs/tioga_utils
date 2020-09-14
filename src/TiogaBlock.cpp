@@ -482,14 +482,16 @@ void TiogaBlock::register_solution_old(TIOGA::tioga& tg)
   if (num_nodes_ < 1) return;
   auto timeMon = get_timer("TiogaBlock::register_solution");
 
-  qsol_.resize(num_nodes_);
+  auto& qsol = bdata_.qsol_;
+  if (qsol.size() != num_nodes_) qsol.init("stk_soln_array", num_nodes_);
 
+  auto& qsolarr = qsol.h_view;
   auto& xyz = bdata_.xyz_.h_view;
   for (int i=0, ii=0; i<num_nodes_; i++, ii+=3) {
-    qsol_[i] = xyz[ii] + xyz[ii+1] + xyz[ii+2];
+      qsolarr(i) = xyz[ii] + xyz[ii+1] + xyz[ii+2];
   }
 
-  tg.registerSolution(meshtag_, qsol_.data());
+  tg.registerSolution(meshtag_, qsolarr.data());
 }
 
 double TiogaBlock::calculate_residuals_old()
@@ -500,10 +502,11 @@ double TiogaBlock::calculate_residuals_old()
   if (num_nodes_ < 1) return rnorm;
   auto timeMon = get_timer("TiogaBlock::calculate_residuals");
 
+  auto& qsol = bdata_.qsol_.h_view;
   auto& xyz = bdata_.xyz_.h_view;
   for (int i=0, ii=0; i < num_nodes_; i++, ii+=3) {
-    double diff = qsol_[i] - (xyz[ii] + xyz[ii+1] + xyz[ii+2]);
-    rnorm += diff * diff;
+      double diff = qsol(i) - (xyz[ii] + xyz[ii+1] + xyz[ii+2]);
+      rnorm += diff * diff;
   }
 
   rnorm /= num_nodes_;
@@ -515,7 +518,10 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
     if (num_nodes_ < 1) return;
     auto tmon = get_timer("TiogaBlock::register_solution");
 
-    qsol_.resize(num_nodes_ * nvars);
+    const size_t qsol_size = num_nodes_ * nvars;
+    auto& qsol = bdata_.qsol_;
+    if (qsol.size() != qsol_size) qsol.init("stk_soln_array", qsol_size);
+    auto& qsolarr = qsol.h_view;
 
     auto* qvars = meta_.get_field<GenericFieldType>(
         stk::topology::NODE_RANK, "qvars");
@@ -530,11 +536,11 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
             const auto node = (*b)[in];
             double* qq = stk::mesh::field_data(*qvars, node);
             for (int i=0; i < nvars; ++i)
-                qsol_[ip++] = qq[i];
+                qsolarr(ip++) = qq[i];
         }
     }
 
-    tg.register_unstructured_solution(meshtag_, qsol_.data(),nvars,0);
+    tg.register_unstructured_solution(meshtag_, qsolarr.data(),nvars,0);
 }
 
 double TiogaBlock::update_solution(const int nvars)
@@ -543,6 +549,7 @@ double TiogaBlock::update_solution(const int nvars)
     if (num_nodes_ < 1) return rnorm;
     auto tmon = get_timer("TiogaBlock::update_solution");
 
+    auto& qsolarr = bdata_.qsol_.h_view;
     auto* qvars = meta_.get_field<GenericFieldType>(
         stk::topology::NODE_RANK, "qvars");
     stk::mesh::Selector sel = stk::mesh::selectUnion(blkParts_)
@@ -556,9 +563,9 @@ double TiogaBlock::update_solution(const int nvars)
             const auto node = (*b)[in];
             double* qq = stk::mesh::field_data(*qvars, node);
             for (int i=0; i < nvars; ++i) {
-                const double diff = qsol_[ip] - qq[i];
+                const double diff = qsolarr(ip) - qq[i];
                 rnorm += diff * diff;
-                qq[i] = qsol_[ip++];
+                qq[i] = qsolarr(ip++);
             }
         }
     }

@@ -44,6 +44,8 @@ struct NgpTiogaBlock
     ngp::NgpDualArray<int*> eid_map_;
     ngp::NgpDualArray<stk::mesh::EntityId*> node_gid_;
     ngp::NgpDualArray<stk::mesh::EntityId*> cell_gid_;
+
+    ngp::NgpDualArray<double*> qsol_;
 };
 
 /**
@@ -203,8 +205,6 @@ private:
 
   //! Receptor information for this mesh block
   std::vector<int> receptor_info_;
-
-  std::vector<double> qsol_;
 
   std::string coordsName_;
 
