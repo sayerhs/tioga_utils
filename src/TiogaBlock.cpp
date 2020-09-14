@@ -241,12 +241,12 @@ void TiogaBlock::process_nodes()
     bdata_.xyz_.init("xyz", ndim_ * num_nodes_);
     bdata_.iblank_.init("iblank_node", num_nodes_);
     bdata_.node_res_.init("node_res", num_nodes_);
-    bdata_.node_map_.init("stk_to_tioga_id", bulk_.get_size_of_entity_index_space());
+    bdata_.eid_map_.init("stk_to_tioga_id", bulk_.get_size_of_entity_index_space());
     bdata_.node_gid_.init("node_gid", num_nodes_);
   }
 
   auto& ngp_xyz = bdata_.xyz_.h_view;
-  auto& nidmap = bdata_.node_map_.h_view;
+  auto& nidmap = bdata_.eid_map_.h_view;
   auto& nodegid = bdata_.node_gid_.h_view;
   int ip =0; // Index into the xyz_ array
   for (auto b: mbkts) {
@@ -265,7 +265,7 @@ void TiogaBlock::process_nodes()
   }
 
   bdata_.xyz_.sync_to_device();
-  bdata_.node_map_.sync_to_device();
+  bdata_.eid_map_.sync_to_device();
   bdata_.node_gid_.sync_to_device();
   Kokkos::deep_copy(bdata_.iblank_.h_view, 1);
   Kokkos::deep_copy(bdata_.iblank_.d_view, 1);
@@ -287,7 +287,7 @@ void TiogaBlock::process_wallbc()
   }
 
   auto& wallids = bdata_.wallIDs_.h_view;
-  auto& nidmap = bdata_.node_map_.h_view;
+  auto& nidmap = bdata_.eid_map_.h_view;
   int ip = 0; // Index into the wallIDs array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
@@ -314,7 +314,7 @@ void TiogaBlock::process_ovsetbc()
   }
 
   auto& ovsetids = bdata_.ovsetIDs_.h_view;
-  auto& nidmap = bdata_.node_map_.h_view;
+  auto& nidmap = bdata_.eid_map_.h_view;
   int ip = 0; // Index into ovsetIDs array
   for (auto b: mbkts) {
     for (size_t in=0; in < b->size(); in++) {
@@ -381,7 +381,7 @@ void TiogaBlock::process_elements()
 
   // 4. Create connectivity map based on local node index (xyz_)
   int ep = 0;
-  auto& nidmap = bdata_.node_map_.h_view;
+  auto& eidmap = bdata_.eid_map_.h_view;
   auto& cellgid = bdata_.cell_gid_.h_view;
   for (auto b: mbkts) {
     const int npe = b->num_nodes(0);
@@ -390,11 +390,12 @@ void TiogaBlock::process_elements()
     for (size_t in=0; in < b->size(); in++) {
       const stk::mesh::Entity elem = (*b)[in];
       const stk::mesh::EntityId eid = bulk_.identifier(elem);
+      eidmap(elem.local_offset()) = ep + 1;
       cellgid(ep++) = eid;
       const stk::mesh::Entity* enodes = b->begin_nodes(in);
       for (int i=0; i < npe; i++) {
         const stk::mesh::EntityId nid = bulk_.identifier(enodes[i]);
-        bdata_.connect_[idx].h_view(offset++) = nidmap(enodes[i].local_offset());
+        bdata_.connect_[idx].h_view(offset++) = eidmap(enodes[i].local_offset());
       }
     }
     conn_offsets[npe] = offset;
