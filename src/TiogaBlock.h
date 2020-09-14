@@ -134,14 +134,6 @@ public:
   inline const ngp::NgpDualArray<stk::mesh::EntityId*>::HostArrayType& node_id_map() const
   { return bdata_.node_gid_.h_view; }
 
-  //! IBLANK mask indicating whether the element is active or inactive
-  inline const std::vector<int>& iblank_cell() const
-  { return iblank_cell_; }
-
-  //! IBLANK mask indicating whether the element is active or inactive
-  inline const std::vector<int>& iblanks() const
-  { return iblank_; }
-
 private:
   TiogaBlock() = delete;
   TiogaBlock(const TiogaBlock&) = delete;
@@ -196,19 +188,6 @@ private:
   stk::mesh::PartVector ovsetParts_;
 
   NgpTiogaBlock bdata_;
-
-  //! Node IBLANK information from TIOGA
-  std::vector<int> iblank_;
-
-  //! Element IBLANK information from TIOGA
-  std::vector<int> iblank_cell_;
-
-  /** Lookup table for node ID to local index in xyz_ array
-   *
-   *  Used to populate the wall and overset BC arrays as well as the overset
-   *  connectivity information.
-   */
-  std::map<stk::mesh::EntityId, size_t> node_map_;
 
   /** Connectivity data structure
    *

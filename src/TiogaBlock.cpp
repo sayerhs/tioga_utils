@@ -127,13 +127,14 @@ TiogaBlock::update_iblanks()
   const stk::mesh::BucketVector& mbkts =
     bulk_.get_buckets(stk::topology::NODE_RANK, mesh_selector);
 
+  auto& iblank = bdata_.iblank_.h_view;
   int ip = 0;
   for (auto b : mbkts) {
     double* ib = stk::mesh::field_data(*ibf, *b);
     for (size_t in = 0; in < b->size(); in++) {
       // stk::mesh::Entity node = (*b)[in];
       // stk::mesh::EntityId nid = bulk_.identifier(node);
-      ib[in] = iblank_[ip++];
+      ib[in] = iblank(ip++);
     }
   }
 }
@@ -149,11 +150,12 @@ void TiogaBlock::update_iblank_cell()
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::ELEM_RANK, mesh_selector);
 
+  auto& iblank_cell = bdata_.iblank_cell_.h_view;
   int ip = 0;
   for (auto b: mbkts) {
     double* ib = stk::mesh::field_data(*ibf, *b);
     for(size_t in=0; in < b->size(); in++) {
-      ib[in] = iblank_cell_[ip++];
+      ib[in] = iblank_cell(ip++);
     }
   }
 }
@@ -235,7 +237,6 @@ void TiogaBlock::process_nodes()
 
   if (is_init_ || ncount != num_nodes_) {
     num_nodes_ = ncount;
-    iblank_.resize(num_nodes_, 1);
 
     bdata_.xyz_.init("xyz", ndim_ * num_nodes_);
     bdata_.iblank_.init("iblank_node", num_nodes_);
@@ -259,7 +260,6 @@ void TiogaBlock::process_nodes()
       }
       nidmap(node.local_offset()) = ip + 1; // TIOGA uses 1-based indexing
       nodegid(ip) = nid;
-      node_map_[nid] = ip + 1; // TIOGA uses 1-based indexing
       ip++;
     }
   }
@@ -375,11 +375,8 @@ void TiogaBlock::process_elements()
     conn_ids[kv.first] = idx;
     conn_offsets[kv.first] = 0;
     idx++;
-    cres_count += kv.first * kv.second;
   }
 
-  std::cout << "Total elements = " << tot_elems << std::endl;
-  iblank_cell_.resize(tot_elems);
   bdata_.iblank_cell_.init("iblank_cell", tot_elems);
   bdata_.cell_res_.init("cell_res", tot_elems);
   bdata_.cell_gid_.init("cell_gid", tot_elems);
@@ -400,7 +397,7 @@ void TiogaBlock::process_elements()
       for (int i=0; i < npe; i++) {
         const stk::mesh::EntityId nid = bulk_.identifier(enodes[i]);
         bdata_.connect_[idx].h_view(offset) = nidmap(enodes[i].local_offset());
-        connect_[idx][offset++] = node_map_[nid];
+        connect_[idx][offset++] = nidmap(enodes[i].local_offset());
       }
     }
     conn_offsets[npe] = offset;
@@ -422,17 +419,15 @@ void TiogaBlock::register_block(TIOGA::tioga& tg)
   if (num_nodes_ < 1) return;
   auto timeMon = get_timer("TiogaBlock::register_block");
 
-  for (int i=0; i < iblank_.size(); i++)
-      iblank_[i] = 1;
-  for (int i=0; i < iblank_cell_.size(); i++)
-      iblank_cell_[i] = 1;
+  Kokkos::deep_copy(bdata_.iblank_.h_view, 1.0);
+  Kokkos::deep_copy(bdata_.iblank_cell_.h_view, 1.0);
 
   // Register the mesh block information to TIOGA
   tg.registerGridData(
     meshtag_,                        // Unique body tag
     num_nodes_,                      // Number of nodes in this mesh block
     bdata_.xyz_.h_view.data(),       // Nodal coordinates
-    iblank_.data(),                  // iblank array corresponding to nodes
+    bdata_.iblank_.h_view.data(),    // iblank array corresponding to nodes
     num_wallbc_,                     // Number of Wall BC nodes
     num_ovsetbc_,                    // Number of overset BC nodes
     bdata_.wallIDs_.h_view.data(),   // Node IDs of wall BC nodes
@@ -445,7 +440,7 @@ void TiogaBlock::register_block(TIOGA::tioga& tg)
     bdata_.node_gid_.h_view.data()   // Global ID for the node array
   );
   // Indicate that we want element IBLANK information returned
-  tg.set_cell_iblank(meshtag_, iblank_cell_.data());
+  tg.set_cell_iblank(meshtag_, bdata_.iblank_cell_.h_view.data());
   //tg.setResolutions(meshtag_, node_res_.data(), cell_res_.data());
 }
 
