@@ -461,7 +461,7 @@ void TiogaBlock::process_elements()
 void TiogaBlock::register_block(TIOGA::tioga& tg, const bool use_ngp_iface)
 {
   if (use_ngp_iface)
-    std::cout << "not implemented" << std::endl;
+    register_block_ngp(tg);
   else
     register_block_classic(tg);
 }
