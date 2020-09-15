@@ -460,7 +460,7 @@ void TiogaSTKIface::register_solution(const int nvars)
 {
     auto tmon = get_timer("TiogaSTKIface::register_solution");
     for (auto& tb: blocks_)
-        tb->register_solution(tg_, nvars);
+        tb->register_solution(tg_, nvars, use_ngp_iface_);
 }
 
 void TiogaSTKIface::update_solution(const int nvars)
