@@ -10,9 +10,20 @@
 #include <iostream>
 #include <cmath>
 
+#include "TiogaMeshInfo.h"
 #include "tioga.h"
 
 namespace tioga_nalu {
+namespace {
+template<typename T1, typename T2>
+void kokkos_to_tioga_view(T1& lhs, const T2& rhs)
+{
+    lhs.hptr = rhs.h_view.data();
+    lhs.dptr = rhs.d_view.data();
+    lhs.sz = rhs.d_view.size();
+}
+
+}
 
 TiogaBlock::TiogaBlock(
   stk::mesh::MetaData& meta,
@@ -22,6 +33,7 @@ TiogaBlock::TiogaBlock(
   const int meshtag
 ) : meta_(meta),
     bulk_(bulk),
+    minfo_(new TIOGA::MeshBlockInfo),
     coordsName_(coordsName),
     ndim_(meta_.spatial_dimension()),
     meshtag_(meshtag)
@@ -572,6 +584,35 @@ double TiogaBlock::update_solution(const int nvars)
 
     rnorm /= static_cast<double>(num_nodes_ * nvars);
     return std::sqrt(rnorm);
+}
+
+void TiogaBlock::block_info_to_tioga()
+{
+    // Note solution registration is handled separately. We don't process that here.
+    static_assert(NgpTiogaBlock::max_vertex_types == TIOGA::MeshBlockInfo::max_vertex_types,
+                  "Invalid vertex types encountered");
+    auto& mi = *minfo_;
+    auto& bd = bdata_;
+
+    mi.meshtag = meshtag_;
+    mi.num_nodes = num_nodes_;
+    mi.qtype = TIOGA::MeshBlockInfo::ROW;
+
+    // Array dimensions
+    kokkos_to_tioga_view(mi.wall_ids, bd.wallIDs_);
+    kokkos_to_tioga_view(mi.overset_ids, bd.ovsetIDs_);
+    kokkos_to_tioga_view(mi.num_vert_per_elem, bd.num_verts_);
+    kokkos_to_tioga_view(mi.num_cells_per_elem, bd.num_cells_);
+
+    kokkos_to_tioga_view(mi.xyz, bd.xyz_);
+    kokkos_to_tioga_view(mi.iblank_node, bd.iblank_);
+    kokkos_to_tioga_view(mi.iblank_cell, bd.iblank_cell_);
+    kokkos_to_tioga_view(mi.node_gid, bd.node_gid_);
+    kokkos_to_tioga_view(mi.cell_gid, bd.cell_gid_);
+
+    for (int i=0; i < TIOGA::MeshBlockInfo::max_vertex_types; ++i) {
+        kokkos_to_tioga_view(mi.vertex_conn[i], bd.connect_[i]);
+    }
 }
 
 

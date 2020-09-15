@@ -165,6 +165,8 @@ private:
    */
   void process_elements();
 
+  void block_info_to_tioga();
+
   //! Reference to the STK Mesh MetaData object
   stk::mesh::MetaData& meta_;
 
@@ -190,6 +192,7 @@ private:
   stk::mesh::PartVector ovsetParts_;
 
   NgpTiogaBlock bdata_;
+  std::unique_ptr<TIOGA::MeshBlockInfo> minfo_;
 
   /** Connectivity map.
    *
