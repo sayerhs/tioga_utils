@@ -238,7 +238,7 @@ void TiogaAMRIface::update_solution()
                 const auto qarr = qfab.array(mfi);
                 const auto qref_arr = qref_fab.array(mfi);
 
-                amrex::ParallelFor(bx, [&](int i, int j, int k) {
+                amrex::LoopOnCpu(bx, [=, &rnorm](int i, int j, int k) {
                     for (int n = 0; n < ncomp; ++n) {
                         amrex::Real diff =
                             qarr(i, j, k, n) - qref_arr(i, j, k, n);
@@ -258,7 +258,7 @@ void TiogaAMRIface::update_solution()
                 const auto qarr = qfab.array(mfi);
                 const auto qref_arr = qref_fab.array(mfi);
 
-                amrex::ParallelFor(bx, [&](int i, int j, int k) {
+                amrex::LoopOnCpu(bx, [=, &rnorm](int i, int j, int k) {
                     for (int n = 0; n < ncomp; ++n) {
                         amrex::Real diff =
                             qarr(i, j, k, n) - qref_arr(i, j, k, n);
@@ -346,7 +346,7 @@ void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real of
             const auto bx = mfi.growntilebox(m_num_ghost);
             const auto qarr = qfab.array(mfi);
 
-            amrex::ParallelFor(bx, [&](int i, int j, int k) noexcept {
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
                 const amrex::Real x = problo[0] + (i + offset) * dx[0];
                 const amrex::Real y = problo[1] + (j + offset) * dx[1];
                 const amrex::Real z = problo[2] + (k + offset) * dx[2];

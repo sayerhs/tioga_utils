@@ -4,6 +4,21 @@ project(TIOGA_UTILS CXX)
 
 option(ENABLE_AMR_WIND "Enable interface to AMR-wind" ON)
 option(ENABLE_NALU_WIND "Enable interface to nalu-wind" OFF)
+option(TU_ENABLE_CUDA "Enable CUDA builds" OFF)
+
+set(TU_CUDA_SM "70" CACHE STRING "CUDA arch option")
+
+if (TU_ENABLE_CUDA)
+  enable_language(CUDA)
+  set(CMAKE_CUDA_STANDARD 11)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  set(CMAKE_CUDA_EXTENSIONS OFF)
+  if (CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "9.0")
+    message(FATAL_ERROR "Your nvcc version is ${CMAKE_CUDA_COMPILER_VERSION}. "
+      "Please use CUDA toolkit version 9.0 or newer")
+  endif()
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-gencode=arch=compute_${TU_CUDA_SM},code=sm_${TU_CUDA_SM}")
+endif()
 
 if (ENABLE_AMR_WIND)
   add_subdirectory(ext)

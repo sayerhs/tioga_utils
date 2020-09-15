@@ -40,8 +40,11 @@ public:
 
     int num_node_vars() const { return m_nnode_vars; }
 
-private:
+    // Public for CUDA
+
     void init_var(Field&, const int nvars, const amrex::Real offset);
+
+private:
 
     std::unique_ptr<StructMesh> m_mesh;
 

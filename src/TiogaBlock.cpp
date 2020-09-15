@@ -199,7 +199,7 @@ void TiogaBlock::update_iblank_cell()
   ngp::run_entity_algorithm(
       "update_iblanks", bulk_.get_updated_ngp_mesh(),
       stk::topology::ELEM_RANK, mesh_selector,
-      [&](const typename Traits::MeshIndex& mi) {
+      KOKKOS_LAMBDA(const typename Traits::MeshIndex& mi) {
           auto elem = (*mi.bucket)[mi.bucketOrd];
           const auto idx = eidmap(elem.local_offset()) - 1;
           iblank_ngp.get(mi, 0) = iblarr(idx);
@@ -407,7 +407,6 @@ void TiogaBlock::process_elements()
 
   // 3. Populate TIOGA data structures
   int idx = 0;
-  int cres_count = 0;
   int tot_elems = 0;
   for (auto kv: conn_map_) {
     tot_elems += kv.second;

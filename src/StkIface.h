@@ -79,7 +79,7 @@ public:
     int& num_node_vars() { return nnode_vars_; }
     const int& num_node_vars() const { return nnode_vars_; }
 
-    const int num_vars() const { return ncell_vars_ + nnode_vars_; }
+    int num_vars() const { return ncell_vars_ + nnode_vars_; }
 
 private:
     void init_vars();
