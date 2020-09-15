@@ -94,9 +94,11 @@ public:
    */
   void update_connectivity();
 
-  /** Register this block with TIOGA 
+  /** Register this block with TIOGA
+   *
+   *  @param use_ngp_interface Use TIOGA's NGP interface for registration
    */
-  void register_block(TIOGA::tioga&);
+  void register_block(TIOGA::tioga&, const bool use_ngp_iface = false);
 
   /** Update iblanks after connectivity updates
    */
@@ -124,8 +126,9 @@ public:
    *
    *  @param tg Reference to TIOGA API object
    *  @param nvars Number of components in the generic field
+   *  @param use_ngp_interface Use TIOGA's NGP interface for registration
    */
-  void register_solution(TIOGA::tioga&, const int);
+  void register_solution(TIOGA::tioga&, const int, const bool use_ngp_iface = false);
 
   //! Update solution field and return error norm
   double update_solution(const int);
@@ -166,6 +169,9 @@ private:
   void process_elements();
 
   void block_info_to_tioga();
+
+  void register_block_classic(TIOGA::tioga&);
+  void register_block_ngp(TIOGA::tioga&);
 
   //! Reference to the STK Mesh MetaData object
   stk::mesh::MetaData& meta_;

@@ -167,6 +167,8 @@ private:
   //! For static meshes this is coordinates, for moving meshes this is
   //! "current_coordinates". Initialized when this instance is constructed.
   std::string coordsName_;
+
+  bool use_ngp_iface_{false};
 };
 
 

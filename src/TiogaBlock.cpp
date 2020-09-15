@@ -458,7 +458,29 @@ void TiogaBlock::process_elements()
   Kokkos::deep_copy(bdata_.iblank_cell_.d_view, 1);
 }
 
-void TiogaBlock::register_block(TIOGA::tioga& tg)
+void TiogaBlock::register_block(TIOGA::tioga& tg, const bool use_ngp_iface)
+{
+  if (use_ngp_iface)
+    std::cout << "not implemented" << std::endl;
+  else
+    register_block_classic(tg);
+}
+
+void TiogaBlock::register_block_ngp(TIOGA::tioga& tg)
+{
+  if (num_nodes_ < 1) return;
+  auto timeMon = get_timer("TiogaBlock::register_block");
+
+  Kokkos::deep_copy(bdata_.iblank_.h_view, 1.0);
+  Kokkos::deep_copy(bdata_.iblank_cell_.h_view, 1.0);
+  Kokkos::deep_copy(bdata_.iblank_.d_view, 1.0);
+  Kokkos::deep_copy(bdata_.iblank_cell_.d_view, 1.0);
+
+  block_info_to_tioga();
+  tg.register_unstructured_grid(minfo_.get());
+}
+
+void TiogaBlock::register_block_classic(TIOGA::tioga& tg)
 {
   // Do nothing if this mesh block isn't present in this MPI Rank
   if (num_nodes_ < 1) return;
@@ -525,7 +547,7 @@ double TiogaBlock::calculate_residuals_old()
   return std::sqrt(rnorm);
 }
 
-void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
+void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars, const bool use_ngp_iface)
 {
     if (num_nodes_ < 1) return;
     auto tmon = get_timer("TiogaBlock::register_solution");
@@ -552,7 +574,13 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars)
         }
     }
 
-    tg.register_unstructured_solution(meshtag_, qsolarr.data(),nvars,0);
+    if (use_ngp_iface) {
+        minfo_->num_vars = nvars;
+        kokkos_to_tioga_view(minfo_->qnode, bdata_.qsol_);
+        tg.register_unstructured_solution();
+    }
+    else
+        tg.register_unstructured_solution(meshtag_, qsolarr.data(),nvars,0);
 }
 
 double TiogaBlock::update_solution(const int nvars)

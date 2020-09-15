@@ -54,6 +54,10 @@ TiogaSTKIface::load(const YAML::Node& node)
     blocks_[i].reset(
         new TiogaBlock(meta_, bulk_, oset_groups[i], coordsName_, i + 1));
   }
+
+  if (node["use_ngp_interface"]) {
+      use_ngp_iface_ = node["use_ngp_interface"].as<bool>();
+  }
 }
 
 void TiogaSTKIface::setup()
@@ -432,7 +436,7 @@ void TiogaSTKIface::register_mesh()
     // Update the coordinates for TIOGA and register updates to the TIOGA mesh block.
     for (auto& tb: blocks_) {
         tb->update_coords();
-        tb->register_block(tg_);
+        tb->register_block(tg_, use_ngp_iface_);
     }
 }
 
