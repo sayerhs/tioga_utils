@@ -7,7 +7,7 @@
 namespace tioga_nalu {
 namespace ngp {
 
-#ifdef KOKKOS_ENALE_CUDA
+#ifdef KOKKOS_ENABLE_CUDA
 using MemSpace = Kokkos::CudaSpace;
 using UVMSpace = Kokkos::CudaUVMSpace;
 #elif defined(KOKKOS_ENABLE_OPENMP)
@@ -15,7 +15,7 @@ using MemSpace = Kokkos::OpenMP;
 using UVMSpace = Kokkos::OpenMP;
 #else
 using MemSpace = Kokkos::HostSpace;
-using MemSpace = Kokkos::HostSpace;
+using UVMSpace = Kokkos::HostSpace;
 #endif
 
 using HostSpace = Kokkos::DefaultHostExecutionSpace;
