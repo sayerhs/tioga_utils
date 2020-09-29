@@ -264,20 +264,14 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
     init_var(*m_qnode, m_nnode_vars, 0.0);
     auto tmon = tioga_nalu::get_timer("TiogaAMRIface::register_solution");
 
-    tg.register_amr_solution();
-
-#if 0
+    // Copy solution to reference fabs
     const int nlevels = m_mesh->repo().num_active_levels();
-    int ipatch_cell = 0;
-    int ipatch_node = 0;
-
     for (int lev=0; lev < nlevels; ++lev) {
         if (m_ncell_vars > 0) {
             auto& qref = m_mesh->repo().get_field("qcell_ref");
             auto& qfab = (*m_qcell)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
-                tg.register_amr_solution(ipatch_cell++, qarr.dataPtr(), m_ncell_vars, 0);
             }
             auto& qref_fab = qref(lev);
             amrex::MultiFab::Copy(qref_fab, qfab, 0, 0,
@@ -287,7 +281,6 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
             auto& qfab = (*m_qnode)(lev);
             for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
                 auto& qarr = qfab[mfi];
-                tg.register_amr_solution(ipatch_node++, qarr.dataPtr(), 0, m_nnode_vars);
             }
             auto& qref = m_mesh->repo().get_field("qnode_ref");
             auto& qref_fab = qref(lev);
@@ -295,7 +288,8 @@ void TiogaAMRIface::register_solution(TIOGA::tioga& tg)
                                   qref.num_comp(), qref.num_grow());
         }
     }
-#endif
+
+    tg.register_amr_solution();
 }
 
 void TiogaAMRIface::update_solution()
@@ -418,8 +412,8 @@ void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real of
 
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& geom = m_mesh->Geom(lev);
-        const auto* problo = geom.ProbLo();
-        const auto* dx = geom.CellSize();
+        const auto* problo = geom.ProbLoArray();
+        const auto* dx = geom.CellSizeArray();
         auto& qfab = qcell(lev);
 
         for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
