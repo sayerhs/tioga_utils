@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "StructMesh.h"
+#include "NgpAMRTypes.h"
 
 namespace YAML {
 class Node;
@@ -11,9 +12,34 @@ class Node;
 
 namespace TIOGA {
 class tioga;
+struct AMRMeshInfo;
 }
 
 namespace tioga_amr {
+
+struct NgpAMRInfo
+{
+    template <typename T> using AType = NgpAmrDualArray<T>;
+
+    NgpAMRInfo(const int nglobal, const int nlocal);
+
+    // Arrays of size ngrids_global
+    AType<int> level;
+    AType<int> mpi_rank;
+    AType<int> local_id;
+    AType<int> ilow;
+    AType<int> ihigh;
+    AType<int> dims;
+    AType<amrex::Real> xlo;
+    AType<amrex::Real> dx;
+
+    // Arrays of size ngrids_local
+    AType<int> global_idmap;
+    AType<int*> iblank_node;
+    AType<int*> iblank_cell;
+    AType<amrex::Real*> qcell;
+    AType<amrex::Real*> qnode;
+};
 
 class TiogaAMRIface
 {
@@ -45,8 +71,12 @@ public:
     void init_var(Field&, const int nvars, const amrex::Real offset);
 
 private:
+    void amr_to_tioga_info();
 
     std::unique_ptr<StructMesh> m_mesh;
+
+    std::unique_ptr<TIOGA::AMRMeshInfo> m_info;
+    std::unique_ptr<NgpAMRInfo> m_amr_data;
 
     //! Reference to cell variable field
     Field* m_qcell{nullptr};
