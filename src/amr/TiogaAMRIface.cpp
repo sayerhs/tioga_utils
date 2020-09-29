@@ -55,9 +55,9 @@ NgpAMRInfo::NgpAMRInfo(const int nglobal, const int nlocal)
     : level(nglobal)
     , mpi_rank(nglobal)
     , local_id(nglobal)
-    , ilow(nglobal)
-    , ihigh(nglobal)
-    , dims(nglobal)
+    , ilow(AMREX_SPACEDIM * nglobal)
+    , ihigh(AMREX_SPACEDIM * nglobal)
+    , dims(AMREX_SPACEDIM * nglobal)
     , xlo(AMREX_SPACEDIM * nglobal)
     , dx(AMREX_SPACEDIM * nglobal)
     , global_idmap(nlocal)
@@ -412,8 +412,8 @@ void TiogaAMRIface::init_var(Field& qcell, const int nvars, const amrex::Real of
 
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& geom = m_mesh->Geom(lev);
-        const auto* problo = geom.ProbLoArray();
-        const auto* dx = geom.CellSizeArray();
+        const auto& problo = geom.ProbLoArray();
+        const auto& dx = geom.CellSizeArray();
         auto& qfab = qcell(lev);
 
         for (amrex::MFIter mfi(qfab); mfi.isValid(); ++mfi) {
