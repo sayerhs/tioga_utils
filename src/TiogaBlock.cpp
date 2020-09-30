@@ -169,6 +169,7 @@ TiogaBlock::update_iblanks()
               ++pctr.array_[2];
           }
       }, ngp_counter);
+  ibf->modify_on_device();
 
   int gcounter[3] = {0, 0, 0};
   stk::all_reduce_sum(bulk_.parallel(), counter.array_, gcounter, 3);
@@ -204,6 +205,7 @@ void TiogaBlock::update_iblank_cell()
           const auto idx = eidmap(elem.local_offset()) - 1;
           iblank_ngp.get(mi, 0) = iblarr(idx);
       });
+  ibf->modify_on_device();
 }
 
 void TiogaBlock::get_donor_info(TIOGA::tioga& tg, stk::mesh::EntityProcVec& egvec)

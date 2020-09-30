@@ -132,6 +132,10 @@ size_t StkIface::write_outputs(const YAML::Node& node, const double time)
         stkio_.add_field(fh, *qvars);
     }
 
+    // Sync fields to host before output
+    for (auto* fld: meta_.get_fields())
+        fld->sync_to_host();
+
     stkio_.begin_output_step(fh, time);
     stkio_.write_defined_output_fields(fh);
     stkio_.end_output_step(fh);
@@ -143,6 +147,10 @@ void StkIface::write_outputs(size_t fh, const double time)
 {
     if (bulk_.parallel_rank() == 0)
         std::cout << "Writing to STK output file at: " << time << std::endl;
+
+    // Sync fields to host before output
+    for (auto* fld: meta_.get_fields())
+        fld->sync_to_host();
 
     stkio_.begin_output_step(fh, time);
     stkio_.write_defined_output_fields(fh);
