@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #include "amrex_yaml.h"
 #include "ExaTioga.h"
@@ -10,6 +11,51 @@
 #include "stk_util/environment/ParseCommandLineArgs.hpp"
 
 #include "AMReX.H"
+
+void print_configuration()
+{
+    int nprocs = amrex::ParallelDescriptor::NProcs();
+    int iproc = amrex::ParallelDescriptor::MyProc();
+    char hostname[MPI_MAX_PROCESSOR_NAME];
+    int len;
+    MPI_Get_processor_name(hostname, &len);
+    amrex::Print()
+        << "\nRun configuration: "
+        << "Num. MPI ranks = " << nprocs << std::endl;
+#ifdef AMREX_USE_CUDA
+#if defined(CUDA_VERSION)
+    amrex::Print() << "CUDA configuration: "
+                   << "CUDA_VERSION: " << CUDA_VERSION
+                   << " " << CUDA_VERSION / 1000 << "."
+                   << (CUDA_VERSION % 1000) / 10 << std::endl;
+#endif
+    std::ostringstream buf;
+
+    buf << "[" << iproc << "] " << hostname << " ";
+    cudaError_t error;
+    int ndevices;
+    cudaDeviceProp dev;
+    error = cudaGetDeviceCount(&ndevices);
+
+    if (error != cudaSuccess) {
+        throw std::runtime_error("Error getting CUDA devices");
+    }
+
+    const int rankDevice = amrex::Gpu::Device::deviceId();
+    error = cudaGetDeviceProperties(&dev, rankDevice);
+    if (error != cudaSuccess) {
+        throw std::runtime_error("Error getting CUDA devices");
+    }
+    char busid[512];
+    cudaDeviceGetPCIBusId(busid, 512, rankDevice);
+    buf << rankDevice << "/" << ndevices << ": "
+        << dev.name << " CC: " << dev.major << "." << dev.minor
+        << " ID: " << busid;
+    std::cout << buf.str() << std::endl;
+#endif
+    amrex::ParallelDescriptor::Barrier();
+    amrex::Print() << std::endl;
+}
 
 bool parse_cmdline(
     int& argc, char** argv,
@@ -69,6 +115,8 @@ int main(int argc, char** argv)
             }
         });
     }
+
+    print_configuration();
 
     {
         tioga_amr::ExaTioga driver(comm);
