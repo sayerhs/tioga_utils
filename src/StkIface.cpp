@@ -108,6 +108,10 @@ size_t StkIface::write_outputs(const YAML::Node& node, const double time)
     if (node["motion_info"])
         has_motion = true;
 
+    auto* cell_vol = meta_.get_field<ScalarFieldType>(
+        stk::topology::ELEM_RANK, "cell_volume");
+    auto* nodal_vol = meta_.get_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "nodal_volume");
     ScalarFieldType* ibf = meta_.get_field<ScalarFieldType>(
         stk::topology::NODE_RANK, "iblank");
     ScalarFieldType* ibcell = meta_.get_field<ScalarFieldType>(
@@ -117,6 +121,8 @@ size_t StkIface::write_outputs(const YAML::Node& node, const double time)
     if (bulk_.parallel_rank() == 0)
         std::cout << "Writing STK output file: " << out_mesh << std::endl;
     size_t fh = stkio_.create_output_mesh(out_mesh, stk::io::WRITE_RESTART);
+    stkio_.add_field(fh, *nodal_vol);
+    stkio_.add_field(fh, *cell_vol);
     stkio_.add_field(fh, *ibf);
     stkio_.add_field(fh, *ibcell);
 

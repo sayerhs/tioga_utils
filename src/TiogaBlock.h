@@ -168,6 +168,12 @@ private:
    */
   void process_elements();
 
+  /** Compute volumes */
+  void compute_volumes();
+
+  /** Compute volumes */
+  void adjust_resolutions();
+
   void block_info_to_tioga();
 
   void register_block_classic(TIOGA::tioga&);
@@ -215,6 +221,9 @@ private:
   //! Receptor information for this mesh block
   std::vector<int> receptor_info_;
 
+  double cellResFac_{1.0};
+  double nodeResFac_{1.0};
+
   std::string coordsName_;
 
   //! Dimensionality of the mesh
@@ -235,6 +244,8 @@ private:
   //! Flag to check if we are are already initialized
   bool is_init_ { true };
 
+  //! Flag indicating if we should adjust resolutions for mandatory fringes
+  bool adjust_resolutions_{true};
 };
 
 } // namespace tioga
