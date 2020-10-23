@@ -567,7 +567,7 @@ void TiogaBlock::adjust_resolutions()
   constexpr double large_volume = std::numeric_limits<double>::max();
   // Paraview freaks out if we set large volume in the field
   constexpr double lvol1 = 1.0e16;
-  stk::mesh::Selector sel = stk::mesh::selectUnion(blkParts_)
+  stk::mesh::Selector sel = stk::mesh::selectUnion(ovsetParts_)
       & (meta_.locally_owned_part() | meta_.globally_shared_part());
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     meta_.side_rank(), sel);
@@ -575,6 +575,8 @@ void TiogaBlock::adjust_resolutions()
       stk::topology::NODE_RANK, "nodal_volume");
   auto* cell_vol = meta_.get_field<ScalarFieldType>(
       stk::topology::ELEM_RANK, "cell_volume");
+
+  size_t counter[2] = {0, 0};
 
   auto& eidmap = bdata_.eid_map_.h_view;
   auto& cellres = bdata_.cell_res_.h_view;
@@ -591,6 +593,7 @@ void TiogaBlock::adjust_resolutions()
         cellres[eidx] = large_volume;
         double* cVol = stk::mesh::field_data(*cell_vol, elem);
         cVol[0] = lvol1;
+        ++counter[0];
 
         const auto* nodes = bulk_.begin_nodes(elem);
         const auto num_nodes = bulk_.num_nodes(elem);
@@ -602,9 +605,20 @@ void TiogaBlock::adjust_resolutions()
 
           double* dVol = stk::mesh::field_data(*nodal_vol, node);
           dVol[0] = lvol1;
+          ++counter[1];
         }
       }
     }
+  }
+
+  size_t gcounter[2] = {0, 0};
+  stk::all_reduce_sum(bulk_.parallel(), counter, gcounter, 2);
+  if (bulk_.parallel_rank() == 0) {
+      std::cout << "Set resolutions for mandatory fringes:\n    "
+                << "Mesh ID = " << meshtag_
+                << " Elements = " << gcounter[0]
+                << " Nodes = " << gcounter[1]
+                << std::endl;
   }
 
   bdata_.cell_res_.sync_to_device();
