@@ -79,6 +79,16 @@ void TiogaSTKIface::initialize()
   for (auto& tb: blocks_) {
     tb->initialize();
   }
+
+  {
+      auto* nodal_vol = meta_.get_field<ScalarFieldType>(
+          stk::topology::NODE_RANK, "nodal_volume");
+      stk::mesh::parallel_max(bulk_, {nodal_vol});
+  }
+
+  for (auto& tb: blocks_) {
+      tb->adjust_node_resolutions();
+  }
 }
 
 void TiogaSTKIface::execute()

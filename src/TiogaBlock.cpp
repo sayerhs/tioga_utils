@@ -114,7 +114,7 @@ void TiogaBlock::initialize()
   process_elements();
 
   compute_volumes();
-  if (adjust_resolutions_) adjust_resolutions();
+  if (adjust_resolutions_) adjust_cell_resolutions();
 
   is_init_ = false;
 }
@@ -155,7 +155,7 @@ TiogaBlock::update_connectivity()
   process_elements();
 
   compute_volumes();
-  if (adjust_resolutions_) adjust_resolutions();
+  if (adjust_resolutions_) adjust_cell_resolutions();
 }
 
 void
@@ -558,7 +558,36 @@ void TiogaBlock::compute_volumes()
   bdata_.node_res_.sync_to_device();
 }
 
-void TiogaBlock::adjust_resolutions()
+void TiogaBlock::adjust_node_resolutions()
+{
+  // Only perform this step if user requested adjust resolutions
+  if (!adjust_resolutions_) return;
+
+  constexpr double large_volume = std::numeric_limits<double>::max();
+  constexpr double lvol1 = 1.0e15;
+  stk::mesh::Selector sel = stk::mesh::selectUnion(blkParts_)
+      & (meta_.locally_owned_part() | meta_.globally_shared_part());
+  const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
+      stk::topology::NODE_RANK, sel);
+  auto* nodal_vol = meta_.get_field<ScalarFieldType>(
+      stk::topology::NODE_RANK, "nodal_volume");
+
+  auto& eidmap = bdata_.eid_map_.h_view;
+  auto& noderes = bdata_.node_res_.h_view;
+  for (auto b: mbkts) {
+    double* dVol = stk::mesh::field_data(*nodal_vol, *b);
+    for (size_t in = 0; in < b->size(); in++) {
+      const auto node = (*b)[in];
+      const int nidx = eidmap(node.local_offset()) - 1;
+      const double nodevol = dVol[in];
+      noderes[nidx] = (nodevol > lvol1) ? large_volume : nodevol;
+    }
+  }
+
+  bdata_.node_res_.sync_to_device();
+}
+
+void TiogaBlock::adjust_cell_resolutions()
 {
   // For every face on the sideset, grab the connected element and set its
   // cell resolution to a large value. Also for each node of that element, set
@@ -580,7 +609,6 @@ void TiogaBlock::adjust_resolutions()
 
   auto& eidmap = bdata_.eid_map_.h_view;
   auto& cellres = bdata_.cell_res_.h_view;
-  auto& noderes = bdata_.node_res_.h_view;
   for (auto b: mbkts) {
     for (size_t fi=0; fi < b->size(); ++fi) {
       const auto face = (*b)[fi];
@@ -600,9 +628,6 @@ void TiogaBlock::adjust_resolutions()
 
         for (unsigned in=0; in < num_nodes; ++in) {
           const auto node = nodes[in];
-          const int nidx = eidmap(node.local_offset()) - 1;
-          noderes[nidx] = large_volume;
-
           double* dVol = stk::mesh::field_data(*nodal_vol, node);
           dVol[0] = lvol1;
           ++counter[1];
@@ -622,7 +647,6 @@ void TiogaBlock::adjust_resolutions()
   }
 
   bdata_.cell_res_.sync_to_device();
-  bdata_.node_res_.sync_to_device();
 }
 
 void TiogaBlock::register_block(TIOGA::tioga& tg, const bool use_ngp_iface)

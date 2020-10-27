@@ -108,6 +108,8 @@ public:
    */
   void update_iblank_cell();
 
+  void adjust_node_resolutions();
+
   /** Determine the custom ghosting elements for this mesh block
    *
    *  Calls the TIOGA API and populates the elements that need ghosting to other
@@ -172,7 +174,7 @@ private:
   void compute_volumes();
 
   /** Compute volumes */
-  void adjust_resolutions();
+  void adjust_cell_resolutions();
 
   void block_info_to_tioga();
 
