@@ -9,6 +9,7 @@
 #include "stk_util/parallel/Parallel.hpp"
 #include "stk_util/environment/OptionsSpecification.hpp"
 #include "stk_util/environment/ParseCommandLineArgs.hpp"
+#include "stk_util/environment/ParsedOptions.hpp"
 
 #include "AMReX.H"
 
