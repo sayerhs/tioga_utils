@@ -478,10 +478,13 @@ void TiogaBlock::process_elements()
   // TIOGA expects a ptr-to-ptr data structure for connectivity
   for(size_t i=0; i<ntypes; i++) {
     tioga_conn_[i] = bdata_.connect_[i].h_view.data();
+    bdata_.connect_[i].sync_to_device();
   }
 
   bdata_.eid_map_.sync_to_device();
   bdata_.cell_gid_.sync_to_device();
+  bdata_.num_verts_.sync_to_device();
+  bdata_.num_cells_.sync_to_device();
   Kokkos::deep_copy(bdata_.iblank_cell_.h_view, 1);
   Kokkos::deep_copy(bdata_.iblank_cell_.d_view, 1);
 }
@@ -767,6 +770,7 @@ void TiogaBlock::register_solution(TIOGA::tioga& tg, const int nvars, const bool
     }
 
     if (use_ngp_iface) {
+        bdata_.qsol_.sync_to_device();
         minfo_->num_vars = nvars;
         kokkos_to_tioga_view(minfo_->qnode, bdata_.qsol_);
         tg.register_unstructured_solution();
@@ -781,6 +785,7 @@ double TiogaBlock::update_solution(const int nvars)
     if (num_nodes_ < 1) return rnorm;
     auto tmon = get_timer("TiogaBlock::update_solution");
 
+    bdata_.qsol_.sync_to_host();
     auto& qsolarr = bdata_.qsol_.h_view;
     auto* qvars = meta_.get_field<GenericFieldType>(
         stk::topology::NODE_RANK, "qvars");
