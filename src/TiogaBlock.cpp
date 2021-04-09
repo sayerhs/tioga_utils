@@ -785,7 +785,9 @@ double TiogaBlock::update_solution(const int nvars)
     if (num_nodes_ < 1) return rnorm;
     auto tmon = get_timer("TiogaBlock::update_solution");
 
-    bdata_.qsol_.sync_to_host();
+    // TODO: sync to host after uppdating TIOGA to update solution on device
+    // bdata_.qsol_.sync_to_host();
+
     auto& qsolarr = bdata_.qsol_.h_view;
     auto* qvars = meta_.get_field<GenericFieldType>(
         stk::topology::NODE_RANK, "qvars");
