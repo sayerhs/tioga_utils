@@ -10,7 +10,7 @@ set(TU_CUDA_SM "70" CACHE STRING "CUDA arch option")
 
 if (TU_ENABLE_CUDA)
   enable_language(CUDA)
-  set(CMAKE_CUDA_STANDARD 11)
+  set(CMAKE_CUDA_STANDARD 17)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   set(CMAKE_CUDA_EXTENSIONS OFF)
   if (CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "9.0")
@@ -26,7 +26,7 @@ endif()
 
 find_package(MPI REQUIRED)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
@@ -53,3 +53,9 @@ if (ENABLE_AMR_WIND)
 endif()
 
 add_subdirectory(src)
+
+if(ENABLE_AMR_WIND)
+  install(TARGETS exatioga stk2tioga)
+else()
+  install(TARGETS stk2tioga)
+endif()

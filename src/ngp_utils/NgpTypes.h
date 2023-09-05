@@ -64,7 +64,8 @@ template <typename Mesh=stk::mesh::NgpMesh>
 struct NGPMeshTraits
 {
     using TeamPolicy = Kokkos::TeamPolicy<typename Mesh::MeshExecSpace,
-                                          stk::mesh::ScheduleType>;
+                                          stk::ngp::ScheduleType>;
+                                          //stk::mesh::ScheduleType>;
     using TeamHandleType = typename TeamPolicy::member_type;
     using ShmemType = typename Mesh::MeshExecSpace::scratch_memory_space;
     using MeshIndex = typename Mesh::MeshIndex;
