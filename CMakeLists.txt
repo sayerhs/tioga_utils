@@ -44,18 +44,5 @@ if (ENABLE_NALU_WIND)
   find_path(NALU_INCLUDES Realm.h PATHS ${NALU_DIR}/include)
 endif()
 
-add_library(tioga_stk OBJECT)
-add_executable(stk2tioga)
-
-if (ENABLE_AMR_WIND)
-  add_library(tioga_amr OBJECT)
-  add_executable(exatioga)
-endif()
-
 add_subdirectory(src)
 
-if(ENABLE_AMR_WIND)
-  install(TARGETS exatioga stk2tioga)
-else()
-  install(TARGETS stk2tioga)
-endif()
