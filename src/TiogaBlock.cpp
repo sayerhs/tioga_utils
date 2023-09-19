@@ -16,9 +16,7 @@
 #include "TiogaMeshInfo.h"
 #include "tioga.h"
 
-extern "C" {
 double computeCellVolume(double xv[8][3],int nvert);
-}
 
 namespace tioga_nalu {
 namespace {
@@ -178,9 +176,9 @@ TiogaBlock::update_iblanks()
   auto& iblarr = bdata_.iblank_.d_view;
   auto& nidmap = bdata_.eid_map_.d_view;
   auto& iblank_ngp = stk::mesh::get_updated_ngp_field<double>(*ibf);
+  ibf->sync_to_device();
   ngp::run_entity_par_reduce(
       "update_iblanks", stk::mesh::get_updated_ngp_mesh(bulk_),
-      //"update_iblanks", bulk_.get_updated_ngp_mesh(),
       stk::topology::NODE_RANK, mesh_selector,
       KOKKOS_LAMBDA(
           const typename Traits::MeshIndex& mi,
@@ -228,7 +226,6 @@ void TiogaBlock::update_iblank_cell()
   auto& iblank_ngp = stk::mesh::get_updated_ngp_field<double>(*ibf);
   ngp::run_entity_algorithm(
       "update_iblanks", stk::mesh::get_updated_ngp_mesh(bulk_),
-      //"update_iblanks", bulk_.get_updated_ngp_mesh(),
       stk::topology::ELEM_RANK, mesh_selector,
       KOKKOS_LAMBDA(const typename Traits::MeshIndex& mi) {
           auto elem = (*mi.bucket)[mi.bucketOrd];
